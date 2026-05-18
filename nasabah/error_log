@@ -1,0 +1,12 @@
+[18-May-2026 13:17:27 Asia/Jakarta] PHP Warning:  Trying to access array offset on value of type null in /home/globalmo/public_html/nasabah/dashboard.php on line 25
+[18-May-2026 13:17:27 Asia/Jakarta] PHP Warning:  Trying to access array offset on value of type null in /home/globalmo/public_html/nasabah/dashboard.php on line 144
+[18-May-2026 13:17:27 Asia/Jakarta] PHP Warning:  Trying to access array offset on value of type null in /home/globalmo/public_html/nasabah/dashboard.php on line 144
+[18-May-2026 13:17:27 Asia/Jakarta] PHP Warning:  Trying to access array offset on value of type null in /home/globalmo/public_html/nasabah/dashboard.php on line 144
+[18-May-2026 13:17:27 Asia/Jakarta] PHP Warning:  Trying to access array offset on value of type null in /home/globalmo/public_html/nasabah/dashboard.php on line 182
+[18-May-2026 13:17:27 Asia/Jakarta] PHP Deprecated:  number_format(): Passing null to parameter #1 ($num) of type float is deprecated in /home/globalmo/public_html/nasabah/dashboard.php on line 50
+[18-May-2026 13:17:45 Asia/Jakarta] PHP Warning:  Trying to access array offset on value of type null in /home/globalmo/public_html/nasabah/dashboard.php on line 25
+[18-May-2026 13:17:45 Asia/Jakarta] PHP Warning:  Trying to access array offset on value of type null in /home/globalmo/public_html/nasabah/dashboard.php on line 144
+[18-May-2026 13:17:45 Asia/Jakarta] PHP Warning:  Trying to access array offset on value of type null in /home/globalmo/public_html/nasabah/dashboard.php on line 144
+[18-May-2026 13:17:45 Asia/Jakarta] PHP Warning:  Trying to access array offset on value of type null in /home/globalmo/public_html/nasabah/dashboard.php on line 144
+[18-May-2026 13:17:45 Asia/Jakarta] PHP Warning:  Trying to access array offset on value of type null in /home/globalmo/public_html/nasabah/dashboard.php on line 182
+[18-May-2026 13:17:45 Asia/Jakarta] PHP Deprecated:  number_format(): Passing null to parameter #1 ($num) of type float is deprecated in /home/globalmo/public_html/nasabah/dashboard.php on line 50

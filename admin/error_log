@@ -1,0 +1,20 @@
+[11-Mar-2026 14:29:35 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in /home/globalmo/public_html/config/security.php on line 17
+[11-Mar-2026 14:29:39 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in /home/globalmo/public_html/config/security.php on line 17
+[13-Mar-2026 13:03:18 Asia/Jakarta] PHP Fatal error:  Uncaught mysqli_sql_exception: Field 'id' doesn't have a default value in /home/globalmo/public_html/admin/kredit_tambah.php:65
+Stack trace:
+#0 /home/globalmo/public_html/admin/kredit_tambah.php(65): mysqli_query()
+#1 /home/globalmo/public_html/admin/dashboard.php(248): include('/home/globalmo/...')
+#2 {main}
+  thrown in /home/globalmo/public_html/admin/kredit_tambah.php on line 65
+[13-Mar-2026 13:11:45 Asia/Jakarta] PHP Fatal error:  Uncaught mysqli_sql_exception: Field 'id' doesn't have a default value in /home/globalmo/public_html/admin/kredit_tambah.php:65
+Stack trace:
+#0 /home/globalmo/public_html/admin/kredit_tambah.php(65): mysqli_query()
+#1 /home/globalmo/public_html/admin/dashboard.php(248): include('/home/globalmo/...')
+#2 {main}
+  thrown in /home/globalmo/public_html/admin/kredit_tambah.php on line 65
+[13-Mar-2026 13:21:23 Asia/Jakarta] PHP Fatal error:  Uncaught mysqli_sql_exception: Field 'id' doesn't have a default value in /home/globalmo/public_html/admin/kredit_tambah.php:65
+Stack trace:
+#0 /home/globalmo/public_html/admin/kredit_tambah.php(65): mysqli_query()
+#1 /home/globalmo/public_html/admin/dashboard.php(248): include('/home/globalmo/...')
+#2 {main}
+  thrown in /home/globalmo/public_html/admin/kredit_tambah.php on line 65
