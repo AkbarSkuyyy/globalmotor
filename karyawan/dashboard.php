@@ -2,219 +2,283 @@
 session_start();
 require '../config/security.php';
 
-// Proteksi Gerbang Karyawan
-if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'karyawan') {
+if ($_SESSION['role'] !== 'nasabah') {
     header('Location: ../auth/login.php');
     exit;
 }
 
 include '../config/database.php';
 
-// Ambil data untuk widget statistik
-$q_nasabah = mysqli_query($conn, "SELECT COUNT(id) AS total FROM nasabah_profile");
-$tot_nasabah = mysqli_fetch_assoc($q_nasabah)['total'] ?? 0;
+$user_id = $_SESSION['user_id'];
+$query_user = mysqli_query($conn, "SELECT username FROM users WHERE id='$user_id'");
+$user = mysqli_fetch_assoc($query_user);
+$no_kontrak = $user['username'] ?? '';
 
-$q_pending = mysqli_query($conn, "SELECT COUNT(id) AS total FROM pembayaran WHERE status = 'PENDING'");
-$tot_pending = mysqli_fetch_assoc($q_pending)['total'] ?? 0;
-
-$bulan_ini = date('Y-m');
-$q_sukses = mysqli_query($conn, "SELECT COUNT(id) AS total FROM pembayaran WHERE status = 'VALID' AND DATE_FORMAT(created_at, '%Y-%m') = '$bulan_ini'");
-$tot_sukses = mysqli_fetch_assoc($q_sukses)['total'] ?? 0;
-
-$q_terbaru = mysqli_query($conn, "
-    SELECT 
-        pb.created_at, 
-        p.no_kontrak, 
-        COALESCE(np.nama, '-') AS nama, 
-        (a.jumlah + pb.kode_unik) AS total_bayar,
-        pb.status
-    FROM pembayaran pb
-    JOIN angsuran a ON pb.angsuran_id = a.id
-    JOIN penjualan p ON a.penjualan_id = p.id
-    LEFT JOIN nasabah_profile np ON p.no_kontrak = p.no_kontrak
-    ORDER BY pb.created_at DESC LIMIT 5
+$query_jual = mysqli_query($conn, "
+    SELECT p.*, k.merk, k.tipe, k.warna
+    FROM penjualan p
+    JOIN kendaraan k ON p.kendaraan_id = k.id
+    WHERE p.no_kontrak='$no_kontrak'
 ");
+$jual = mysqli_fetch_assoc($query_jual);
+
+$data = [];
+$lunas = 0;
+$total = 0;
+$progress = 0;
+$next = null;
+
+if ($jual) {
+    $angsuran = mysqli_query($conn, "
+        SELECT * FROM angsuran
+        WHERE penjualan_id='{$jual['id']}'
+        ORDER BY bulan_ke ASC
+    ");
+
+    if ($angsuran) {
+        while($a = mysqli_fetch_assoc($angsuran)){
+            $data[] = $a;
+            $total++;
+            if($a['status'] == 'LUNAS' || $a['status'] == 'SUDAH LUNAS') $lunas++;
+        }
+    }
+
+    $progress = $total > 0 ? round(($lunas / $total) * 100) : 0;
+
+    $status_pending = false;
+    foreach($data as $a){
+        if($a['status'] == 'PENDING'){
+            $next = $a;
+            $status_pending = true;
+            break;
+        }
+        if($a['status'] == 'BELUM' || $a['status'] == 'BELUM LUNAS'){
+            $next = $a;
+            break;
+        }
+    }
+}
+
+if (!function_exists('rupiah')) {
+    function rupiah($a){
+        return 'Rp ' . number_format((float)($a ?? 0), 0, ',', '.');
+    }
+}
+
+date_default_timezone_set('Asia/Jakarta');
 ?>
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Karyawan - Global Motor</title>
-    
+    <title>Dashboard Nasabah</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f1f5f9; 
-            color: #334155;
+        body{
+            background:#eef2f7;
+            font-family:'Segoe UI',sans-serif;
         }
-        h1, h2, h3, h4, h5 {
-            font-family: 'Montserrat', sans-serif;
+
+        /* HEADER */
+        .header{
+            background:linear-gradient(135deg,#2563eb,#1e40af);
+            color:white;
+            padding:40px 30px;
+            border-radius:0 0 30px 30px;
+            box-shadow:0 15px 35px rgba(0,0,0,0.15);
         }
-        
-        /* Kartu Statistik Biasa */
-        .stat-card { border: none; border-radius: 12px; }
-        
-        /* Kartu Aksi Cepat */
-        .action-card {
-            border: none;
-            border-radius: 16px;
-            transition: all 0.3s ease;
-            background: #ffffff;
-            cursor: pointer;
-            text-decoration: none !important;
+
+        .progress{
+            height:10px;
+            border-radius:20px;
+            overflow:hidden;
         }
-        .action-card:hover {
-            transform: translateY(-7px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
-            background: #f8fafc;
+
+        .progress-bar{
+            background:linear-gradient(90deg,#22c55e,#16a34a);
+            transition:width 1s ease-in-out;
         }
-        .icon-action {
-            width: 80px; 
-            height: 80px; 
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 38px; 
-            box-shadow: inset 0 2px 10px rgba(0,0,0,0.05); 
+
+        /* CARD */
+        .card-premium{
+            border:none;
+            border-radius:20px;
+            box-shadow:0 15px 35px rgba(0,0,0,0.08);
+        }
+
+        .summary-card{
+            border:none;
+            border-radius:18px;
+            box-shadow:0 10px 25px rgba(0,0,0,0.06);
+        }
+
+        /* MENU ICON */
+        .menu-box{
+            display:flex;
+            justify-content:space-around;
+            margin-top:30px;
+        }
+
+        .menu-item{
+            text-align:center;
+            text-decoration:none;
+            color:#374151;
+        }
+
+        .menu-circle{
+            width:60px;
+            height:60px;
+            border-radius:50%;
+            background:white;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            box-shadow:0 10px 25px rgba(0,0,0,0.08);
+            font-size:24px;
+            color:#2563eb;
+            transition:all .3s ease;
+        }
+
+        .menu-circle:hover{
+            transform:translateY(-5px);
+            background:#2563eb;
+            color:white !important;
+        }
+
+        .menu-label{
+            margin-top:8px;
+            font-size:13px;
+            font-weight:500;
         }
     </style>
 </head>
 <body>
 
-    <?php include 'navbar.php'; ?>
+    <div class="header">
+        <div class="container">
+            <?php if ($jual) { ?>
+                <h5 class="fw-bold"><?php echo htmlspecialchars($jual['merk'] . ' ' . $jual['tipe'] . ' (' . $jual['warna'] . ')'); ?></h5>
+                <small>No Kontrak: <?php echo htmlspecialchars($no_kontrak); ?></small>
 
-    <div class="container mt-5">
-        
-        <div class="row mb-4">
-            <div class="col-12">
-                <h3 class="fw-bold text-dark">Menu Operasional Karyawan</h3>
-                <p class="text-secondary">Pilih aksi cepat di bawah ini untuk mengelola data kendaraan dan transaksi hari ini.</p>
-            </div>
+                <div class="mt-4">
+                    <small>Progress Pembayaran</small>
+                    <div class="progress mt-2">
+                        <div class="progress-bar" style="width: <?php echo $progress; ?>%"></div>
+                    </div>
+                    <small><?php echo $progress; ?>% Lunas (<?php echo $lunas; ?>/<?php echo $total; ?>)</small>
+                </div>
+            <?php } else { ?>
+                <h5 class="fw-bold">Belum Ada Kontrak Aktif</h5>
+                <small>No Kontrak / Username: <?php echo htmlspecialchars($no_kontrak); ?></small>
+            <?php } ?>
         </div>
+    </div>
 
-        <div class="row g-4 mb-5">
-            
-            <div class="col-md-4">
-                <a href="tambah_motor" class="card action-card shadow-sm h-100 p-4 text-center d-block">
-                    <div class="icon-action mx-auto mb-3 bg-primary bg-opacity-10 text-primary">
-                        <i class="fa-solid fa-motorcycle"></i>
+    <div class="container mt-4 mb-5">
+
+        <?php if ($jual) { ?>
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="card summary-card text-center p-3">
+                        <small class="text-muted">Total Angsuran</small>
+                        <h5 class="fw-bold mt-1"><?php echo $total; ?></h5>
                     </div>
-                    <h5 class="fw-bold text-dark mb-2">Tambah Motor</h5>
-                    <p class="text-muted small m-0">Input data spesifikasi kendaraan bermotor yang baru masuk ke sistem.</p>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card summary-card text-center p-3">
+                        <small class="text-muted">Lunas</small>
+                        <h5 class="fw-bold text-success mt-1"><?php echo $lunas; ?></h5>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card summary-card text-center p-3">
+                        <small class="text-muted">Belum</small>
+                        <h5 class="fw-bold text-danger mt-1"><?php echo ($total - $lunas); ?></h5>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card summary-card text-center p-3">
+                        <small class="text-muted">Angsuran / Bulan</small>
+                        <h6 class="fw-bold text-primary mt-1"><?php echo rupiah($jual['angsuran'] ?? 0); ?></h6>
+                    </div>
+                </div>
+            </div>
+
+            <?php if($next){ ?>
+                <div class="card card-premium text-center p-4 mb-4 bg-white">
+                    <small class="text-muted">Tagihan Berikutnya</small>
+                    <h3 class="fw-bold text-dark my-2"><?php echo rupiah($next['jumlah'] ?? 0); ?></h3>
+                    <p class="mb-1 text-secondary">Bulan ke <?php echo htmlspecialchars($next['bulan_ke'] ?? ''); ?></p>
+                    <p class="mb-0 text-secondary">Jatuh Tempo: <strong><?php echo isset($next['jatuh_tempo']) ? date('d M Y', strtotime($next['jatuh_tempo'])) : '-'; ?></strong></p>
+
+                    <?php if ($status_pending) { ?>
+                        <button class="btn btn-warning w-100 mt-3 rounded-4 fw-bold py-2" disabled>
+                           ⏳ Menunggu Validasi Admin
+                        </button>
+                    <?php } else { ?>
+                        <a href="upload_bayar.php?id=<?php echo urlencode($next['id'] ?? ''); ?>&jumlah=<?php echo urlencode($next['jumlah'] ?? 0); ?>"
+                           class="btn btn-primary w-100 mt-3 rounded-4 py-2 fw-bold">
+                           💳 Bayar Sekarang
+                        </a>
+                    <?php } ?>
+                </div>
+            <?php } else { ?>
+                <div class="alert alert-success text-center rounded-4 p-3 mb-4 shadow-sm">
+                    🎉 Semua tagihan angsuran Anda telah lunas atau belum tersedia tagihan baru.
+                </div>
+            <?php } ?>
+        <?php } else { ?>
+            <div class="alert alert-info text-center rounded-4 p-4 my-4 shadow-sm">
+                Data kendaraan atau detail angsuran Anda belum tersedia di sistem.<br>
+                <small class="text-muted">Silakan hubungi admin Global Motor untuk menginput data kontrak kredit Anda.</small>
+            </div>
+        <?php } ?>
+
+        <div class="menu-box">
+
+            <?php if ($jual) { ?>
+                <a href="kartu_angsuran.php" target="_blank" class="menu-item">
+                    <div class="menu-circle">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                    <div class="menu-label">Kartu</div>
                 </a>
-            </div>
 
-            <div class="col-md-4">
-                <a href="tambah_kredit" class="card action-card shadow-sm h-100 p-4 text-center d-block">
-                    <div class="icon-action mx-auto mb-3 bg-success bg-opacity-10 text-success">
-                        <i class="fa-solid fa-file-contract"></i>
+                <a href="riwayat_pembayaran.php" class="menu-item">
+                    <div class="menu-circle">
+                        <i class="bi bi-clock-history"></i>
                     </div>
-                    <h5 class="fw-bold text-dark mb-2">Tambah Kredit</h5>
-                    <p class="text-muted small m-0">Input data transaksi kontrak kredit baru untuk nasabah.</p>
+                    <div class="menu-label">Riwayat</div>
                 </a>
-            </div>
+            <?php } ?>
 
-            <div class="col-md-4">
-                <a href="stok_motor" class="card action-card shadow-sm h-100 p-4 text-center d-block">
-                    <div class="icon-action mx-auto mb-3 bg-warning bg-opacity-10 text-warning">
-                        <i class="fa-solid fa-warehouse"></i>
-                    </div>
-                    <h5 class="fw-bold text-dark mb-2">Stok Motor</h5>
-                    <p class="text-muted small m-0">Lihat daftar ketersediaan motor, status unit ready, atau sudah terjual.</p>
-                </a>
-            </div>
+            <a href="../auth/logout.php" class="menu-item">
+                <div class="menu-circle text-danger">
+                    <i class="bi bi-box-arrow-right"></i>
+                </div>
+                <div class="menu-label">Logout</div>
+            </a>
 
-        </div>
-
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="card stat-card shadow-sm p-3 border-start border-primary border-4 bg-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div><p class="text-muted fw-bold mb-0 small">TOTAL NASABAH</p></div>
-                        <h4 class="fw-bold mb-0 text-dark"><?= $tot_nasabah ?></h4>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card stat-card shadow-sm p-3 border-start border-warning border-4 bg-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div><p class="text-muted fw-bold mb-0 small">MENUNGGU VALIDASI</p></div>
-                        <h4 class="fw-bold mb-0 text-dark"><?= $tot_pending ?></h4>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card stat-card shadow-sm p-3 border-start border-success border-4 bg-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div><p class="text-muted fw-bold mb-0 small">TRANSAKSI SUKSES (BULAN INI)</p></div>
-                        <h4 class="fw-bold mb-0 text-dark"><?= $tot_sukses ?></h4>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row pb-5">
-            <div class="col-12">
-                <div class="card shadow-sm border-0 rounded-4 overflow-hidden bg-white">
-                    <div class="card-header bg-white border-bottom py-3">
-                        <h5 class="fw-bold m-0 text-dark">Aktivitas Transaksi Terbaru</h5>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="py-3 px-4">Waktu</th>
-                                    <th>No Kontrak</th>
-                                    <th>Nama Nasabah</th>
-                                    <th class="text-end">Jumlah Bayar</th>
-                                    <th class="text-center px-4">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php 
-                                if (mysqli_num_rows($q_terbaru) > 0) {
-                                    while($row = mysqli_fetch_assoc($q_terbaru)){ 
-                                        $status_badge = $row['status'] === 'VALID' ? 'bg-success text-white' : ($row['status'] === 'PENDING' ? 'bg-warning text-dark' : 'bg-danger text-white');
-                                ?>
-                                <tr>
-                                    <td class="px-4 text-secondary small">
-                                        <i class="fa-regular fa-clock me-1"></i> <?= date('d M Y, H:i', strtotime($row['created_at'])) ?>
-                                    </td>
-                                    <td class="fw-bold text-secondary"><?= htmlspecialchars($row['no_kontrak']) ?></td>
-                                    <td class="fw-medium text-dark"><?= htmlspecialchars($row['nama']) ?></td>
-                                    <td class="text-end fw-bold text-primary">Rp <?= number_format($row['total_bayar'], 0, ',', '.') ?></td>
-                                    <td class="text-center px-4">
-                                        <span class="badge rounded-pill border <?= $status_badge ?> px-3 py-1" style="font-size: 11px;">
-                                            <?= $row['status'] ?>
-                                        </span>
-                                    </td>
-                                </tr>
-                                <?php 
-                                    } 
-                                } else {
-                                ?>
-                                <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted fst-italic">
-                                        <i class="fa-solid fa-inbox fs-3 mb-2 d-block opacity-50"></i> Belum ada data transaksi yang masuk.
-                                    </td>
-                                </tr>
-                                <?php } ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
         </div>
 
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            fetch("save_location.php", {
+                method: "POST",
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: "lat=" + position.coords.latitude +
+                      "&lng=" + position.coords.longitude
+            }).catch(err => console.log(err));
+        }, function(error) {
+            console.log("Geolocation error: " + error.message);
+        });
+    }
+    </script>
+
 </body>
 </html>
