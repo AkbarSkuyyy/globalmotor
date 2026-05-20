@@ -1,5 +1,4 @@
 <?php
-
 require '../config/security.php';
 
 if ($_SESSION['role'] !== 'admin') {
@@ -9,7 +8,7 @@ if ($_SESSION['role'] !== 'admin') {
 
 include '../config/database.php';
 
-// ambil semua user kecuali admin
+// Ambil semua user kecuali admin
 $users = mysqli_query($conn, "
     SELECT id, username, role, status, created_at
     FROM users
@@ -17,7 +16,6 @@ $users = mysqli_query($conn, "
     ORDER BY role ASC, created_at DESC
 ");
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -27,61 +25,68 @@ $users = mysqli_query($conn, "
 </head>
 <body class="bg-light">
 
-<div class="container mt-4">
+<div class="container mt-4 mb-5">
+    <h4 class="mb-3 fw-bold">Manajemen User</h4>
 
-    <h4 class="mb-3">Manajemen User</h4>
+    <div class="table-responsive bg-white shadow-sm rounded-3">
+        <table class="table table-bordered table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>No</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Tanggal Dibuat</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php 
+            if (mysqli_num_rows($users) > 0) {
+                $no = 1; 
+                while ($u = mysqli_fetch_assoc($users)) { 
+            ?>
+                <tr>
+                    <td><?php echo $no++; ?></td>
+                    <td><?php echo htmlspecialchars($u['username']); ?></td>
+                    <td>
+                        <span class="badge <?php echo $u['role'] == 'karyawan' ? 'bg-primary' : 'bg-success'; ?>">
+                            <?php echo strtoupper($u['role']); ?>
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge <?php echo $u['status'] == 'AKTIF' ? 'bg-success' : 'bg-secondary'; ?>">
+                            <?php echo $u['status']; ?>
+                        </span>
+                    </td>
+                    <td><?php echo date('d-m-Y', strtotime($u['created_at'])); ?></td>
+                    <td>
+                        <?php if ($u['status'] == 'AKTIF') { ?>
+                            <a href="user_toggle.php?id=<?php echo $u['id']; ?>&aksi=nonaktif"
+                               class="btn btn-sm btn-danger"
+                               onclick="return confirm('Nonaktifkan user ini?')">
+                                Nonaktifkan
+                            </a>
+                        <?php } else { ?>
+                            <a href="user_toggle.php?id=<?php echo $u['id']; ?>&aksi=aktif"
+                               class="btn btn-sm btn-success"
+                               onclick="return confirm('Aktifkan user ini?')">
+                                Aktifkan
+                            </a>
+                        <?php } ?>
+                    </td>
+                </tr>
+            <?php 
+                }
+            } else { 
+            ?>
+                <tr><td colspan="6" class="text-center text-muted">Belum ada data user.</td></tr>
+            <?php } ?>
+            </tbody>
+        </table>
+    </div>
 
-    <table class="table table-bordered table-sm bg-white">
-        <thead class="table-light">
-            <tr>
-                <th>No</th>
-                <th>Username</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Tanggal Dibuat</th>
-                <th>Aksi</th>
-            </tr>
-        </thead>
-        <tbody>
-        <?php $no = 1; while ($u = mysqli_fetch_assoc($users)) { ?>
-            <tr>
-                <td><?= $no++ ?></td>
-                <td><?= $u['username'] ?></td>
-                <td>
-                    <span class="badge <?= $u['role']=='karyawan'?'bg-primary':'bg-success' ?>">
-                        <?= strtoupper($u['role']) ?>
-                    </span>
-                </td>
-                <td>
-                    <span class="badge <?= $u['status']=='AKTIF'?'bg-success':'bg-secondary' ?>">
-                        <?= $u['status'] ?>
-                    </span>
-                </td>
-                <td><?= $u['created_at'] ?></td>
-                <td>
-                    <?php if ($u['status'] == 'AKTIF') { ?>
-                        <a href="user_toggle.php?id=<?= $u['id'] ?>&aksi=nonaktif"
-                           class="btn btn-sm btn-danger"
-                           onclick="return confirm('Nonaktifkan user ini?')">
-                            Nonaktifkan
-                        </a>
-                    <?php } else { ?>
-                        <a href="user_toggle.php?id=<?= $u['id'] ?>&aksi=aktif"
-                           class="btn btn-sm btn-success"
-                           onclick="return confirm('Aktifkan user ini?')">
-                            Aktifkan
-                        </a>
-                    <?php } ?>
-                </td>
-            </tr>
-        <?php } ?>
-        </tbody>
-    </table>
-
-    <a href="dashboard.php" class="btn btn-outline-secondary mt-3">
-        Kembali
-    </a>
-
+    <a href="dashboard.php" class="btn btn-outline-secondary mt-3">Kembali</a>
 </div>
 
 </body>

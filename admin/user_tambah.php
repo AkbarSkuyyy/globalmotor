@@ -1,92 +1,75 @@
 <?php
 require '../config/security.php';
+if ($_SESSION['role'] !== 'admin') exit;
 include '../config/database.php';
 
-if ($_SESSION['role'] !== 'admin') {
-    exit;
-}
-
-$success = '';
-$error = '';
-
+$alert = '';
 if (isset($_POST['simpan'])) {
-
     $username = trim($_POST['username']);
     $password = $_POST['password'];
     $role     = $_POST['role'];
 
-    // cek username
     $cek = mysqli_query($conn,"SELECT id FROM users WHERE username='$username'");
     if (mysqli_num_rows($cek) > 0) {
-        $error = 'Username sudah digunakan';
+        $alert = '<div class="alert alert-danger shadow-sm border-0"><i class="fa-solid fa-circle-exclamation me-2"></i>Username sudah digunakan!</div>';
     } else {
-
         $hash = password_hash($password, PASSWORD_DEFAULT);
-
-        // login_kontrak otomatis (hapus strip)
         $login_kontrak = str_replace('-', '', $username);
 
         mysqli_query($conn,"
-            INSERT INTO users
-            (username, login_kontrak, password, role, status, created_at)
-            VALUES
-            ('$username', '$login_kontrak', '$hash', '$role', 'AKTIF', NOW())
+            INSERT INTO users (username, login_kontrak, password, role, status, created_at)
+            VALUES ('$username', '$login_kontrak', '$hash', '$role', 'AKTIF', NOW())
         ");
-
-        $success = 'Akun berhasil dibuat';
+        $alert = '<div class="alert alert-success shadow-sm border-0"><i class="fa-solid fa-check-circle me-2"></i>Akun berhasil dibuat!</div>';
     }
 }
 ?>
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Tambah User</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
+<div class="container-fluid mt-3 mb-5 px-3" style="max-width: 600px;">
+    <div class="d-flex align-items-center mb-4">
+        <button type="button" onclick="window.history.back()" class="btn btn-outline-secondary rounded-circle me-3">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+               <div>
+            <h3 class="fw-bold text-dark m-0">Tambah User Baru</h3>
+            <p class="text-secondary m-0">Buat akses login untuk karyawan atau nasabah baru.</p>
+        </div>
+    </div>
 
-<div class="container mt-4">
+    <?= $alert ?>
 
-    <h4 class="mb-3">Tambah Akun User</h4>
+    <div class="card shadow-sm border-0 rounded-4 p-4">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="fw-bold text-secondary mb-1">Username</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-user"></i></span>
+                    <input type="text" name="username" class="form-control border-start-0" 
+                           placeholder="Contoh: karyawan1" required>
+                </div>
+            </div>
 
-    <?php if ($success) { ?>
-        <div class="alert alert-success"><?= $success ?></div>
-    <?php } ?>
+            <div class="mb-3">
+                <label class="fw-bold text-secondary mb-1">Password</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-lock"></i></span>
+                    <input type="password" name="password" class="form-control border-start-0" 
+                           placeholder="Minimal 6 karakter" required>
+                </div>
+            </div>
 
-    <?php if ($error) { ?>
-        <div class="alert alert-danger"><?= $error ?></div>
-    <?php } ?>
+            <div class="mb-4">
+                <label class="fw-bold text-secondary mb-1">Role Akun</label>
+                <select name="role" class="form-select border-light-subtle" required>
+                    <option value="">-- Pilih Role --</option>
+                    <option value="karyawan">Karyawan</option>
+                    <option value="nasabah">Nasabah</option>
+                </select>
+            </div>
 
-    <form method="POST">
-
-        <label>Username</label>
-        <input type="text" name="username" class="form-control mb-2"
-               placeholder="contoh: karyawan1 / GM-TEST-001" required>
-
-        <label>Password</label>
-        <input type="text" name="password" class="form-control mb-2"
-               placeholder="contoh: 123456" required>
-
-        <label>Role</label>
-        <select name="role" class="form-control mb-3" required>
-            <option value="">-- Pilih Role --</option>
-            <option value="karyawan">Karyawan</option>
-            <option value="nasabah">Nasabah</option>
-        </select>
-
-        <button name="simpan" class="btn btn-primary w-100">
-            💾 Simpan User
-        </button>
-
-    </form>
-
-    <a href="dashboard.php" class="btn btn-outline-secondary w-100 mt-3">
-        Kembali
-    </a>
-
+            <button name="simpan" class="btn btn-primary w-100 rounded-pill py-2 fw-bold shadow-sm">
+                <i class="fa-solid fa-floppy-disk me-2"></i> Simpan User
+            </button>
+        </form>
+    </div>
 </div>
-
-</body>
-</html>

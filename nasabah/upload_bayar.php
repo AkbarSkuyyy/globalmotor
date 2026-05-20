@@ -10,15 +10,16 @@ if ($_SESSION['role'] !== 'nasabah') {
 include '../config/database.php';
 date_default_timezone_set('Asia/Jakarta');
 
-$angsuran_id = $_GET['id'];
-$jumlah = $_GET['jumlah'];
-$no_kontrak = $_SESSION['username'];
+$angsuran_id = $_GET['id'] ?? '';
+$jumlah = $_GET['jumlah'] ?? 0;
 
-/*
-|--------------------------------------------------------------------------
-| BUAT KODE UNIK SEKALI SAJA
-|--------------------------------------------------------------------------
-*/
+$no_kontrak = $_SESSION['username'] ?? null;
+if (!$no_kontrak) {
+    $user_id = $_SESSION['user_id'];
+    $query_user = mysqli_query($conn, "SELECT username FROM users WHERE id='$user_id'");
+    $u = mysqli_fetch_assoc($query_user);
+    $no_kontrak = $u['username'] ?? '';
+}
 
 if (!isset($_SESSION['kode_unik_'.$angsuran_id])) {
     $_SESSION['kode_unik_'.$angsuran_id] = rand(100,999);
@@ -28,6 +29,13 @@ $kode_unik = $_SESSION['kode_unik_'.$angsuran_id];
 $total_transfer = $jumlah + $kode_unik;
 
 if (isset($_POST['upload'])) {
+
+    // [ANTI-DOUBLE INPUT] Cek apakah bukti untuk angsuran ini sudah ada & masih PENDING
+    $cek_bayar = mysqli_query($conn, "SELECT id FROM pembayaran WHERE angsuran_id='$angsuran_id' AND status='PENDING'");
+    if (mysqli_num_rows($cek_bayar) > 0) {
+        echo "<script>alert('Bukti pembayaran Anda sebelumnya sedang diproses. Mohon tunggu validasi admin.'); window.location.href='dashboard.php';</script>";
+        exit;
+    }
 
     $file = $_FILES['bukti']['name'];
     $tmp  = $_FILES['bukti']['tmp_name'];
@@ -59,12 +67,7 @@ if (isset($_POST['upload'])) {
         WHERE id='$angsuran_id'
     ");
 
-    /*
-    |--------------------------------------------------------------------------
-    | TELEGRAM
-    |--------------------------------------------------------------------------
-    */
-
+    /* ===== TELEGRAM ===== */
     $data = mysqli_fetch_assoc(mysqli_query($conn,"
         SELECT 
             p.no_kontrak,
@@ -80,8 +83,8 @@ if (isset($_POST['upload'])) {
         LIMIT 1
     "));
 
-$token = "8531877183:AAEikf-y_E2ctxcznMtVakQcYKwg2kszp8g";
-$chat_id = "1151150926";
+    $token = "8531877183:AAEikf-y_E2ctxcznMtVakQcYKwg2kszp8g";
+    $chat_id = "1151150926";
 
     $total_transfer = $data['jumlah'] + $data['kode_unik'];
 
@@ -102,7 +105,6 @@ $chat_id = "1151150926";
         'text' => $pesan
     ]));
 
-    // hapus session kode unik setelah dipakai
     unset($_SESSION['kode_unik_'.$angsuran_id]);
 
     header('Location: dashboard.php');
@@ -110,10 +112,9 @@ $chat_id = "1151150926";
 }
 
 function rupiah($angka) {
-    return 'Rp ' . number_format($angka,0,',','.');
+    return 'Rp ' . number_format((float)$angka,0,',','.');
 }
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -121,21 +122,22 @@ function rupiah($angka) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="container mt-4">
+<body class="container mt-4 mb-5">
 
 <h5>Upload Bukti Pembayaran</h5>
 
 <div class="alert alert-info">
     Transfer sebesar:<br>
-    <strong><?= rupiah($total_transfer) ?></strong><br>
-    <small>Termasuk kode unik <?= $kode_unik ?></small>
+    <strong><?php echo rupiah($total_transfer); ?></strong><br>
+    <small>Termasuk kode unik <?php echo htmlspecialchars($kode_unik); ?></small>
 </div>
 
-<form method="POST" enctype="multipart/form-data">
-    <input type="file" name="bukti" class="form-control mb-3" required>
-    <button name="upload" class="btn btn-success w-100">
-        Upload Bukti
+<form method="POST" enctype="multipart/form-data" onsubmit="document.getElementById('btnUpload').disabled = true; document.getElementById('btnUpload').innerHTML = '⏳ Mengupload... Mohon Tunggu';">
+    <input type="file" name="bukti" class="form-control mb-3" required accept=".jpg,.jpeg,.png">
+    <button id="btnUpload" name="upload" type="submit" class="btn btn-success w-100 py-2">
+        🚀 Upload Bukti
     </button>
+    <a href="dashboard.php" class="btn btn-outline-secondary w-100 mt-2 py-2">Kembali</a>
 </form>
 
 </body>

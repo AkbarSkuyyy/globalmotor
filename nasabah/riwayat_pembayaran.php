@@ -9,17 +9,14 @@ if ($_SESSION['role'] !== 'nasabah') {
 
 include '../config/database.php';
 
-// no kontrak = username
 $no_kontrak = $_SESSION['username'] ?? null;
 
-// kalau session username belum ada, ambil dari DB
 if (!$no_kontrak) {
     $uid = $_SESSION['user_id'];
     $u = mysqli_fetch_assoc(mysqli_query($conn,"SELECT username FROM users WHERE id='$uid'"));
     $no_kontrak = $u['username'];
 }
 
-// QUERY RIWAYAT PEMBAYARAN (SESUAI STRUKTUR ASLI)
 $data = mysqli_query($conn, "
     SELECT 
         pb.id,
@@ -37,10 +34,9 @@ $data = mysqli_query($conn, "
 ");
 
 function rupiah($angka) {
-    return 'Rp ' . number_format($angka, 0, ',', '.');
+    return 'Rp ' . number_format((float)$angka, 0, ',', '.');
 }
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -50,58 +46,57 @@ function rupiah($angka) {
 </head>
 <body class="bg-light">
 
-<div class="container mt-4">
+<div class="container mt-4 mb-5">
+    <h4 class="mb-3 fw-bold">Riwayat Pembayaran</h4>
 
-<h4 class="mb-3">Riwayat Pembayaran</h4>
-
-<table class="table table-bordered table-sm bg-white">
-<thead class="table-light">
-<tr>
-<th>No</th>
-<th>Bulan Ke</th>
-<th>Tagihan</th>
-<th>Kode Unik</th>
-<th>Total Transfer</th>
-<th>Status</th>
-<th>Upload</th>
-<th>Validasi</th>
-</tr>
-</thead>
-<tbody>
-
-<?php
-if (mysqli_num_rows($data) == 0) {
-    echo '<tr><td colspan="8" class="text-center text-muted">Belum ada pembayaran</td></tr>';
-} else {
-    $no=1;
-    while($r=mysqli_fetch_assoc($data)){
-        $total = $r['jumlah_angsuran'] + $r['kode_unik'];
-?>
-<tr class="<?= $r['status']=='VALID'?'table-success':'table-warning' ?>">
-<td><?= $no++ ?></td>
-<td><?= $r['bulan_ke'] ?></td>
-<td><?= rupiah($r['jumlah_angsuran']) ?></td>
-<td><?= $r['kode_unik'] ?></td>
-<td><?= rupiah($total) ?></td>
-<td>
-<?php if($r['status']=='VALID'){ ?>
-<span class="badge bg-success">VALID</span>
-<?php } else { ?>
-<span class="badge bg-warning text-dark">PENDING</span>
-<?php } ?>
-</td>
-<td><?= date('d-m-Y H:i', strtotime($r['waktu_upload'])) ?></td>
-<td><?= $r['validated_at'] ? date('d-m-Y H:i', strtotime($r['validated_at'])) : '-' ?></td>
-</tr>
-<?php }} ?>
-
-</tbody>
-</table>
-
-<a href="dashboard.php" class="btn btn-outline-secondary w-100 mt-3">
-Kembali ke Dashboard
-</a>
-
+    <div class="table-responsive bg-white shadow-sm rounded-3">
+        <table class="table table-bordered table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>No</th>
+                    <th>Bulan Ke</th>
+                    <th>Tagihan</th>
+                    <th>Kode Unik</th>
+                    <th>Total Transfer</th>
+                    <th>Status</th>
+                    <th>Upload</th>
+                    <th>Validasi</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php
+            if ($data && mysqli_num_rows($data) > 0) {
+                $no = 1;
+                while($r = mysqli_fetch_assoc($data)){
+                    $total = $r['jumlah_angsuran'] + $r['kode_unik'];
+            ?>
+                <tr class="<?php echo $r['status'] == 'VALID' ? 'table-success' : 'table-warning'; ?>">
+                    <td><?php echo $no++; ?></td>
+                    <td><?php echo htmlspecialchars($r['bulan_ke']); ?></td>
+                    <td><?php echo rupiah($r['jumlah_angsuran']); ?></td>
+                    <td><?php echo htmlspecialchars($r['kode_unik']); ?></td>
+                    <td class="fw-bold"><?php echo rupiah($total); ?></td>
+                    <td>
+                        <?php if($r['status'] == 'VALID'){ ?>
+                            <span class="badge bg-success">VALID</span>
+                        <?php } else { ?>
+                            <span class="badge bg-warning text-dark">MENUNGGU</span>
+                        <?php } ?>
+                    </td>
+                    <td><?php echo date('d/m/Y H:i', strtotime($r['waktu_upload'])); ?></td>
+                    <td><?php echo $r['validated_at'] ? date('d/m/Y H:i', strtotime($r['validated_at'])) : '-'; ?></td>
+                </tr>
+            <?php 
+                } 
+            } else {
+                echo '<tr><td colspan="8" class="text-center text-muted p-4">Belum ada riwayat pembayaran yang diupload.</td></tr>';
+            }
+            ?>
+            </tbody>
+        </table>
+    </div>
+    
+    <a href="dashboard.php" class="btn btn-secondary mt-3 rounded-pill px-4">Kembali</a>
 </div>
 
 </body>
