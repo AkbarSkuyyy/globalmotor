@@ -5,38 +5,37 @@ session_start();
 date_default_timezone_set('Asia/Jakarta');
 
 require '../config/security.php';
+require '../config/database.php';
+require '../fpdf/fpdf.php';
 
+// Pastikan user adalah nasabah
 if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'nasabah') {
     header('Location: ../auth/login.php');
     exit;
 }
 
-require '../config/database.php';
-require '../fpdf/fpdf.php';
-require '../phpqrcode/qrlib.php';
-
 $user_id = $_SESSION['user_id'];
 
-/* ================= AMBIL DATA ================= */
+/* ================= AMBIL DATA DENGAN FILTER USER_ID YANG TEPAT ================= */
+// Perbaikan: Pastikan JOIN terikat langsung pada user_id yang sedang login
 $query_data = mysqli_query($conn,"
     SELECT 
-        p.id,
-        p.no_kontrak,
-        p.tenor,
-        p.angsuran,
+        p.id, p.no_kontrak, p.tenor, p.angsuran,
         k.merk, k.tipe, k.warna
     FROM penjualan p
     JOIN kendaraan k ON p.kendaraan_id = k.id
     JOIN users u ON u.username = p.no_kontrak
     WHERE u.id = '$user_id'
+    LIMIT 1
 ");
+
 $data = mysqli_fetch_assoc($query_data);
 
-// PENGAMAN: Jika belum ada data transaksi, hentikan eksekusi FPDF dengan pesan ramah
 if (!$data) {
-    die("<h3>Data kredit tidak ditemukan.</h3><p>Akun ini belum memiliki transaksi aktif di Global Motor. Silakan kembali ke <a href='dashboard.php'>Dashboard</a>.</p>");
+    die("<h3>Data kredit tidak ditemukan.</h3><p>Akun ini tidak memiliki transaksi aktif yang terhubung. <a href='dashboard.php'>Kembali</a></p>");
 }
 
+// Ambil angsuran berdasarkan ID penjualan yang sudah terfilter milik user tsb
 $angsuran = mysqli_query($conn,"
     SELECT bulan_ke, jatuh_tempo, jumlah, status
     FROM angsuran
@@ -44,71 +43,76 @@ $angsuran = mysqli_query($conn,"
     ORDER BY bulan_ke ASC
 ");
 
-/* ================== MEMULAI PDF ================== */
+/* ================== GENERATE PDF ================== */
 $pdf = new FPDF('P','mm','A4');
 $pdf->AddPage();
 
-$pdf->SetFont('Arial','B',16);
-$pdf->Cell(0,8,'KARTU ANGSURAN GLOBAL MOTOR',0,1,'C');
-$pdf->SetFont('Arial','',10);
-$pdf->Cell(0,6,'Jl. MT Haryono No. 123, Sampit, Kalimantan Tengah',0,1,'C');
-$pdf->Ln(5);
+// Header Aplikasi
+$pdf->SetFillColor(245, 247, 250);
+$pdf->Rect(0, 0, 210, 45, 'F');
 
-$pdf->SetFont('Arial','B',10);
-$pdf->Cell(35,6,'No Kontrak',0,0);
-$pdf->SetFont('Arial','',10);
-$pdf->Cell(5,6,':',0,0);
-$pdf->Cell(0,6,$data['no_kontrak'],0,1);
-
-$pdf->SetFont('Arial','B',10);
-$pdf->Cell(35,6,'Kendaraan',0,0);
-$pdf->SetFont('Arial','',10);
-$pdf->Cell(5,6,':',0,0);
-$pdf->Cell(0,6,$data['merk'].' '.$data['tipe'].' ('.$data['warna'].')',0,1);
-
-$pdf->SetFont('Arial','B',10);
-$pdf->Cell(35,6,'Tenor',0,0);
-$pdf->SetFont('Arial','',10);
-$pdf->Cell(5,6,':',0,0);
-$pdf->Cell(0,6,$data['tenor'].' Bulan',0,1);
-
-$pdf->Ln(5);
-
-$pdf->SetFont('Arial','B',10);
-$pdf->SetFillColor(230,230,230);
-$pdf->Cell(20,8,'Bulan',1,0,'C',true);
-$pdf->Cell(40,8,'Jatuh Tempo',1,0,'C',true);
-$pdf->Cell(45,8,'Jumlah',1,0,'C',true);
-$pdf->Cell(40,8,'Status',1,1,'C',true);
-
-$pdf->SetFont('Arial','',9);
-
-$total_lunas = 0;
-
-while($a = mysqli_fetch_assoc($angsuran)){
-
-    if($a['status'] == 'SUDAH LUNAS' || $a['status'] == 'LUNAS'){
-        $pdf->SetTextColor(0,128,0);
-        $total_lunas++;
-    }
-    elseif($a['status'] == 'BELUM LUNAS' || $a['status'] == 'BELUM'){
-        $pdf->SetTextColor(200,0,0);
-    }
-    else{
-        $pdf->SetTextColor(0,0,0);
-    }
-
-    $pdf->Cell(20,8,$a['bulan_ke'],1,0,'C');
-    $pdf->Cell(40,8,date('d-m-Y',strtotime($a['jatuh_tempo'])),1);
-    $pdf->Cell(45,8,'Rp '.number_format((float)$a['jumlah'],0,',','.'),1,0,'R');
-    $pdf->Cell(40,8,$a['status'],1,1,'C');
+if (file_exists('../assets/logohitam.png')) {
+    $pdf->Image('../assets/logohitam.png', 20, 10, 25);
 }
 
-$pdf->SetTextColor(0,0,0);
-$pdf->Ln(5);
-$pdf->SetFont('Arial','B',10);
-$pdf->Cell(0,6,'Ringkasan: Lunas ('.$total_lunas.') / Total ('.$data['tenor'].')',0,1);
+$pdf->SetXY(50, 12);
+$pdf->SetFont('Arial','B',20);
+$pdf->SetTextColor(44, 62, 80);
+$pdf->Cell(0, 10, 'GLOBAL MOTOR APP', 0, 1, 'L');
+$pdf->SetX(50);
+$pdf->SetFont('Arial','',10);
+$pdf->Cell(0, 5, 'Layanan Informasi Angsuran Digital', 0, 1, 'L');
+$pdf->Ln(15);
 
-$pdf->Output('I', 'Kartu_Angsuran_'.$data['no_kontrak'].'.pdf');
-ob_end_flush();
+// Informasi Utama
+$pdf->SetFillColor(255, 255, 255);
+$pdf->SetDrawColor(220, 220, 220);
+$pdf->Rect(15, 50, 180, 30, 'FD');
+$pdf->SetXY(20, 52);
+$pdf->SetFont('Arial','B',10);
+$pdf->Cell(30, 7, 'No. Kontrak', 0, 0);
+$pdf->Cell(5, 7, ':', 0, 0);
+$pdf->SetFont('Arial','',10);
+$pdf->Cell(0, 7, $data['no_kontrak'], 0, 1);
+$pdf->SetX(20);
+$pdf->SetFont('Arial','B',10);
+$pdf->Cell(30, 7, 'Unit Motor', 0, 0);
+$pdf->Cell(5, 7, ':', 0, 0);
+$pdf->SetFont('Arial','',10);
+$pdf->Cell(0, 7, $data['merk'].' '.$data['tipe'].' - '.$data['warna'].' (Tenor: '.$data['tenor'].' Bulan)', 0, 1);
+
+$pdf->Ln(20);
+
+// Tabel Angsuran
+$pdf->SetX(20); 
+$pdf->SetFont('Arial','B',10);
+$pdf->SetFillColor(60, 179, 113); 
+$pdf->SetTextColor(255, 255, 255);
+$pdf->Cell(20, 10, 'Bulan', 1, 0, 'C', true);
+$pdf->Cell(45, 10, 'Jatuh Tempo', 1, 0, 'C', true);
+$pdf->Cell(50, 10, 'Tagihan', 1, 0, 'C', true);
+$pdf->Cell(45, 10, 'Status', 1, 1, 'C', true);
+
+$pdf->SetFont('Arial','',10);
+$pdf->SetTextColor(0, 0, 0);
+
+while($a = mysqli_fetch_assoc($angsuran)){
+    $status = strtoupper(trim($a['status']));
+    if($status == 'LUNAS' || $status == 'SUDAH LUNAS'){
+        $status_label = ' [ LUNAS ] ';
+        $pdf->SetTextColor(39, 174, 96);
+    } else {
+        $status_label = ' [ BELUM LUNAS ] ';
+        $pdf->SetTextColor(231, 76, 60);
+    }
+
+    $pdf->SetX(20);
+    $pdf->Cell(20, 10, $a['bulan_ke'], 1, 0, 'C');
+    $pdf->Cell(45, 10, date('d/m/Y', strtotime($a['jatuh_tempo'])), 1, 0, 'C');
+    $pdf->Cell(50, 10, 'Rp '.number_format((float)$a['jumlah'], 0, ',', '.'), 1, 0, 'R');
+    $pdf->Cell(45, 10, $status_label, 1, 1, 'C');
+}
+
+ob_end_clean(); 
+$pdf->Output('I', 'Status_Angsuran_'.$data['no_kontrak'].'.pdf');
 ?>
