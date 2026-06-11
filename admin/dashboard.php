@@ -28,7 +28,8 @@ $allowed = [
     'nasabah_detail','nasabah_edit',
     'user_edit', 
     'user_reset',      
-    'user_toggle',     
+    'user_toggle',
+    'user_hapus',    
     'audit_log',
     'pengaturan_umum','pengaturan_user','pengaturan_backup'
 ];
@@ -305,11 +306,36 @@ function isExpanded($arr){
             opacity: 1;
         }
 
-        /* ===== MOBILE MODE ===== */
+      /* ===== MOBILE MODE ===== */
         @media (max-width: 992px){
             .sidebar { left: -280px; }
             .sidebar.show { left: 0; }
             .main-content { margin-left: 0; }
+
+            /* 1. Sembunyikan area background Topbar agar konten terkesan full */
+            .topbar {
+                position: absolute;
+                width: 100%;
+                background: transparent !important;
+                box-shadow: none !important;
+                pointer-events: none; /* Memastikan area kosong tembus klik ke konten di bawahnya */
+                z-index: 1040;
+            }
+
+            /* 2. Jadikan tombol Hamburger & Notifikasi melayang (Floating Button) */
+            .topbar .btn-toggle, 
+            .topbar .bell-wrapper {
+                pointer-events: auto; /* Mengaktifkan kembali sentuhan khusus untuk tombol */
+                background: rgba(255, 255, 255, 0.9) !important; /* Putih sedikit transparan */
+                backdrop-filter: blur(5px); /* Efek kaca kekinian */
+                box-shadow: 0 4px 15px rgba(0,0,0,0.12) !important;
+                border: 1px solid rgba(226, 232, 240, 0.8) !important;
+            }
+
+            /* 3. Beri sedikit jarak atas agar judul konten tidak persis tertutup tombol */
+            .main-content .container-fluid {
+                padding-top: 80px !important; 
+            }
         }
     </style>
 </head>

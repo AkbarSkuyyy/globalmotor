@@ -234,19 +234,14 @@ $qrDataUri = 'data:image/png;base64,' . base64_encode($qrImage);
             </tbody>
         </table>
 
-        <div class="d-flex justify-content-between align-items-end mt-5 pt-3">
-            
-            <div class="text-center ms-3">
-                <div style="font-size: 11px; font-style: italic; margin-bottom: 4px;">Scan Validasi</div>
-                <img src="<?php echo $qrDataUri; ?>" alt="QR Code" style="width: 80px; height: 80px;">
-            </div>
-            
+        <div class="d-flex justify-content-end mt-5 pt-3 pe-3">
             <div class="text-center" style="min-width: 180px; font-size: 13px;">
                 <p class="m-0">Mengetahui,</p>
-                <p class="mb-5 pb-4"></p>
+                <div class="my-2">
+                    <img src="<?php echo $qrDataUri; ?>" alt="QR Code" style="width: 80px; height: 80px;">
+                </div>
                 <p class="fw-bold m-0" style="text-decoration: underline;">Manager Keuangan</p>
             </div>
-            
         </div>
 
     </div>
