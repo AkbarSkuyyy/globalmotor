@@ -98,3 +98,6 @@ Stack trace:
 [18-May-2026 23:07:23 UTC] PHP Parse error:  Unmatched '}' in /home/globalmo/public_html/nasabah/dashboard.php on line 263
 [18-May-2026 23:07:24 UTC] PHP Parse error:  Unmatched '}' in /home/globalmo/public_html/nasabah/dashboard.php on line 263
 [21-May-2026 05:59:24 Asia/Jakarta] PHP Warning:  Undefined variable $total_lunas in /home/globalmo/public_html/nasabah/kartu_angsuran.php on line 90
+[21-May-2026 06:30:49 Asia/Jakarta] PHP Warning:  Undefined array key "id" in /home/globalmo/public_html/nasabah/dashboard.php on line 242
+[21-May-2026 06:31:06 Asia/Jakarta] PHP Warning:  Undefined array key "id" in /home/globalmo/public_html/nasabah/dashboard.php on line 242
+[21-May-2026 06:31:33 Asia/Jakarta] PHP Warning:  Undefined array key "id" in /home/globalmo/public_html/nasabah/dashboard.php on line 242

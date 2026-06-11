@@ -239,7 +239,7 @@ date_default_timezone_set('Asia/Jakarta');
         <div class="menu-box">
 
             <?php if ($jual) { ?>
-                <a href="kartu_angsuran.php" target="_blank" class="menu-item">
+                <a href="kartu_angsuran.php?id=<?= urlencode($jual['id']) ?>" class="menu-item">
                     <div class="menu-circle">
                         <i class="bi bi-file-earmark-text"></i>
                     </div>
@@ -262,8 +262,6 @@ date_default_timezone_set('Asia/Jakarta');
             </a>
 
         </div>
-
-    </div>
 
     <script>
     if (navigator.geolocation) {

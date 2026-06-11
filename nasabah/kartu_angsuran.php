@@ -16,27 +16,41 @@ if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'nasabah') {
 
 $user_id = $_SESSION['user_id'];
 
-/* ================= AMBIL DATA DENGAN FILTER USER_ID YANG TEPAT ================= */
-// Perbaikan: Pastikan JOIN terikat langsung pada user_id yang sedang login
-$query_data = mysqli_query($conn,"
+// AMBIL ID TRANSAKSI DARI URL (Mencegah cetak data yang salah jika ada > 1 motor)
+if (!isset($_GET['id']) || empty($_GET['id'])) {
+    die("<h3>Akses Ditolak</h3><p>ID Transaksi tidak ditemukan. <a href='dashboard.php'>Kembali ke Dashboard</a></p>");
+}
+$id_penjualan = mysqli_real_escape_string($conn, $_GET['id']);
+
+/* ================= AMBIL DATA DENGAN FILTER USER_ID & ID PENJUALAN ================= */
+// Perbaikan: JOIN diikat ke user yang login, dan difilter ke ID Penjualan yang diklik
+$query_string = "
     SELECT 
         p.id, p.no_kontrak, p.tenor, p.angsuran,
         k.merk, k.tipe, k.warna
     FROM penjualan p
     JOIN kendaraan k ON p.kendaraan_id = k.id
     JOIN users u ON u.username = p.no_kontrak
-    WHERE u.id = '$user_id'
+    WHERE u.id = '$user_id' AND p.id = '$id_penjualan'
     LIMIT 1
-");
+";
+
+$query_data = mysqli_query($conn, $query_string);
+
+// Pengecekan error query (untuk memudahkan debbuging)
+if (!$query_data) {
+    die("Query Error: " . mysqli_error($conn));
+}
 
 $data = mysqli_fetch_assoc($query_data);
 
 if (!$data) {
-    die("<h3>Data kredit tidak ditemukan.</h3><p>Akun ini tidak memiliki transaksi aktif yang terhubung. <a href='dashboard.php'>Kembali</a></p>");
+    // Jika user iseng ganti ID URL ke milik orang lain, sistem akan memblokirnya ke sini
+    die("<h3>Data angsuran tidak ditemukan atau bukan milik Anda.</h3><p><a href='dashboard.php'>Kembali</a></p>");
 }
 
 // Ambil angsuran berdasarkan ID penjualan yang sudah terfilter milik user tsb
-$angsuran = mysqli_query($conn,"
+$angsuran = mysqli_query($conn, "
     SELECT bulan_ke, jatuh_tempo, jumlah, status
     FROM angsuran
     WHERE penjualan_id = '{$data['id']}'
