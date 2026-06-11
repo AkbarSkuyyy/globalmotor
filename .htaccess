@@ -1,0 +1,13 @@
+# Matikan fitur melihat isi folder (keamanan)
+Options -Indexes
+
+# Aktifkan mesin URL Rewrite
+RewriteEngine On
+
+# Aturan untuk menghilangkan .php
+# Jika yang diketik BUKAN sebuah folder nyata...
+RewriteCond %{REQUEST_FILENAME} !-d
+# ...dan jika ditambahkan .php ternyata filenya ADA...
+RewriteCond %{REQUEST_FILENAME}\.php -f
+# ...maka arahkan secara diam-diam ke file .php tersebut
+RewriteRule ^(.*)$ $1.php [L]

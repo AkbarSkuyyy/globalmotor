@@ -2,9 +2,9 @@
 session_start();
 require '../config/security.php';
 
-// Proteksi Gerbang Karyawan
-if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'karyawan') {
-    header('Location: ../auth/login.php');
+// 1. Proteksi Gerbang Karyawan (Konsisten dengan login & Tanpa .php)
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'karyawan') {
+    header('Location: ../auth/login');
     exit;
 }
 
@@ -21,6 +21,7 @@ $bulan_ini = date('Y-m');
 $q_sukses = mysqli_query($conn, "SELECT COUNT(id) AS total FROM pembayaran WHERE status = 'VALID' AND DATE_FORMAT(created_at, '%Y-%m') = '$bulan_ini'");
 $tot_sukses = mysqli_fetch_assoc($q_sukses)['total'] ?? 0;
 
+// 2. Perbaikan pada bagian LEFT JOIN nasabah_profile (np)
 $q_terbaru = mysqli_query($conn, "
     SELECT 
         pb.created_at, 
@@ -31,9 +32,15 @@ $q_terbaru = mysqli_query($conn, "
     FROM pembayaran pb
     JOIN angsuran a ON pb.angsuran_id = a.id
     JOIN penjualan p ON a.penjualan_id = p.id
-    LEFT JOIN nasabah_profile np ON p.no_kontrak = p.no_kontrak
+    LEFT JOIN nasabah_profile np ON np.no_kontrak = p.no_kontrak 
     ORDER BY pb.created_at DESC LIMIT 5
 ");
+
+/* CATATAN PENTING UNTUK QUERY DI ATAS: 
+Jika di tabel nasabah_profile Anda tidak menggunakan kolom 'no_kontrak' melainkan 'user_id', 
+silakan ubah baris LEFT JOIN di atas menjadi:
+LEFT JOIN nasabah_profile np ON np.user_id = p.user_id (atau p.nasabah_id sesuai nama kolom Anda).
+*/
 ?>
 <!DOCTYPE html>
 <html lang="id">

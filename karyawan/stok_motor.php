@@ -2,8 +2,9 @@
 session_start();
 require '../config/security.php';
 
-if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'karyawan') {
-    header('Location: ../auth/login.php');
+// 1. Proteksi Gerbang Karyawan (Konsisten dengan login & Tanpa .php)
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'karyawan') {
+    header('Location: ../auth/login');
     exit;
 }
 

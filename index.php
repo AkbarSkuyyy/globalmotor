@@ -1,32 +1,19 @@
 <?php
+// index.php (Root Router)
 session_start();
 
-/*
-|--------------------------------------------------------------------------
-| GLOBAL MOTOR - ENTRY POINT
-|--------------------------------------------------------------------------
-| Redirect otomatis berdasarkan status login & role
-*/
-
-if (isset($_SESSION['login']) && $_SESSION['login'] === true) {
-
+// 1. CEK SESI: Jika user sudah login, langsung arahkan ke dashboard masing-masing TANPA .php
+if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
     if ($_SESSION['role'] === 'admin') {
-        header('Location: admin/dashboard.php');
-        exit;
+        header("Location: admin/dashboard");
+    } elseif ($_SESSION['role'] === 'karyawan') {
+        header("Location: karyawan/dashboard");
+    } else {
+        header("Location: nasabah/dashboard");
     }
-
-    if ($_SESSION['role'] === 'karyawan') {
-        header('Location: karyawan/dashboard.php');
-        exit;
-    }
-
-    if ($_SESSION['role'] === 'nasabah') {
-        header('Location: nasabah/dashboard.php');
-        exit;
-    }
-
+    exit();
 }
 
-// jika belum login
-header('Location: auth/login.php');
-exit;
+// 2. Jika belum login, otomatis arahkan ke halaman login TANPA .php
+header("Location: auth/login");
+exit();

@@ -9,9 +9,9 @@ require '../phpmailer/src/Exception.php';
 require '../phpmailer/src/PHPMailer.php';
 require '../phpmailer/src/SMTP.php';
 
-// Proteksi Gerbang Karyawan
-if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'karyawan') {
-    header('Location: ../auth/login.php');
+// 1. Proteksi Gerbang Karyawan (Konsisten menggunakan user_id & Tanpa .php)
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'karyawan') {
+    header('Location: ../auth/login');
     exit;
 }
 
@@ -147,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_kredit'])){
 
     echo "<script>
         alert('Kredit berhasil ditambahkan! Nomor Kontrak: $no_kontrak');
-        window.location='dashboard'; // Kembali ke dashboard karyawan
+        window.location='dashboard'; // Kembali ke dashboard karyawan (Tanpa .php)
     </script>";
     exit;
 }
@@ -241,7 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_kredit'])){
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Kelurahan</label>
-                                <input type="text" name="kelurahan" class="form-control" placeholder="Desa/Kel." required>
+                                <input type="text" name="rt_rw" class="form-control" placeholder="001/002" required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Kecamatan</label>
