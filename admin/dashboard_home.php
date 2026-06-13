@@ -157,7 +157,7 @@ $log = mysqli_query($conn,"
 <div class="container-fluid pt-2">
 
     <div class="mb-4">
-        <h3 class="fw-bold text-dark m-0">Selamat Datang, Admin 👋</h3>
+        <h3 class="fw-bold text-dark m-0">Selamat Datang, Admin ðŸ‘‹</h3>
         <p class="text-secondary small m-0">
             Ringkasan performa GLOBAL MOTOR bulan <?= date('F Y') ?>
         </p>

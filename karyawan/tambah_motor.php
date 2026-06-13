@@ -1,9 +1,12 @@
 <?php
 session_start();
+
+// CATATAN: require dan include tetap WAJIB pakai .php karena ini memanggil file di dalam server, bukan URL.
 require '../config/security.php';
 
 if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'karyawan') {
-    header('Location: ../auth/login.php');
+    // PERBAIKAN URL: hilangkan .php pada pengalihan halaman (header Location)
+    header('Location: ../auth/login');
     exit;
 }
 
@@ -15,13 +18,16 @@ if (isset($_POST['simpan_motor'])) {
     $merk       = mysqli_real_escape_string($conn, $_POST['merk']);
     $tipe       = mysqli_real_escape_string($conn, $_POST['tipe']);
     $warna      = mysqli_real_escape_string($conn, $_POST['warna']);
+    $no_polisi  = mysqli_real_escape_string($conn, $_POST['no_polisi']);
     $no_rangka  = mysqli_real_escape_string($conn, $_POST['no_rangka']);
     $no_mesin   = mysqli_real_escape_string($conn, $_POST['no_mesin']);
-    $harga_otr  = preg_replace("/[^0-9]/", "", $_POST['harga_otr']);
+    // Menghapus format 'Rp' dan titik untuk disimpan ke database
+    $harga_cash = preg_replace("/[^0-9]/", "", $_POST['harga_cash']);
     $status     = 'READY'; 
 
-    $query = "INSERT INTO motor (merk, tipe, warna, no_rangka, no_mesin, harga_otr, status) 
-              VALUES ('$merk', '$tipe', '$warna', '$no_rangka', '$no_mesin', '$harga_otr', '$status')";
+    // PERBAIKAN DATABASE: Gunakan tabel kendaraan dan kolom harga_cash sesuai database Arenhost Anda
+    $query = "INSERT INTO kendaraan (merk, tipe, warna, no_polisi, no_rangka, no_mesin, harga_cash, status) 
+              VALUES ('$merk', '$tipe', '$warna', '$no_polisi', '$no_rangka', '$no_mesin', '$harga_cash', '$status')";
               
     if (mysqli_query($conn, $query)) {
         $pesan = '<div class="alert alert-success fw-bold rounded-3 shadow-sm border-0"><i class="fa-solid fa-check-circle me-2"></i> Data motor berhasil ditambahkan ke stok!</div>';
@@ -87,8 +93,13 @@ if (isset($_POST['simpan_motor'])) {
                         <input type="text" name="warna" class="form-control" placeholder="Contoh: Matte Black" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Harga OTR (Rp)</label>
-                        <input type="text" name="harga_otr" id="harga_otr" class="form-control fw-bold text-success" placeholder="Rp 0" required>
+                        <label class="form-label">Harga Cash (Rp)</label>
+                        <input type="text" name="harga_cash" id="harga_cash" class="form-control fw-bold text-success" placeholder="Rp 0" required>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label">Nomor Polisi <span class="text-muted fw-normal">(Opsional)</span></label>
+                        <input type="text" name="no_polisi" class="form-control text-uppercase" placeholder="Contoh: B 1234 ABC">
                     </div>
 
                     <div class="col-md-6">
@@ -112,7 +123,7 @@ if (isset($_POST['simpan_motor'])) {
 
     <script>
         // Auto-Format Rupiah
-        const hargaInput = document.getElementById('harga_otr');
+        const hargaInput = document.getElementById('harga_cash');
         hargaInput.addEventListener('input', function() {
             let val = this.value.replace(/[^0-9]/g, '');
             this.value = val ? 'Rp ' + val.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
