@@ -274,80 +274,121 @@ date_default_timezone_set('Asia/Jakarta');
             </a>
 
         </div>
-        
-    <div id="gps-alert-container" class="container mt-3" style="display: none;">
-    <div class="alert alert-danger shadow-sm border-0 rounded-4 d-flex align-items-center justify-content-between p-3">
-        <div class="d-flex align-items-center">
-            <i class="fa-solid fa-location-slash fs-4 me-3"></i>
-            <div>
-                <span class="fw-bold d-block">Lokasi Belum Diizinkan!</span>
-                <small class="small">Akses lokasi diperlukan untuk verifikasi pembayaran.</small>
-            </div>
-        </div>
-        <button onclick="requestGPSAgain()" class="btn btn-danger btn-sm rounded-pill px-3 fw-bold">
-            <i class="fa-solid fa-location-dot me-1"></i> Izinkan
-        </button>
     </div>
-</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            // ==========================================
-            // KONDISI 1: JIKA NASABAH MENGIZINKAN (ALLOW)
-            // ==========================================
-            function(position) {
-                // Tembakkan data lokasi ke API save_location secara diam-diam
-                fetch("save_location", {
-                    method: "POST",
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: "lat=" + position.coords.latitude + "&lng=" + position.coords.longitude
-                }).catch(err => console.log("Gagal mengirim lokasi:", err));
-            }, 
-            // ==========================================
-            // KONDISI 2: JIKA LOKASI DITOLAK ATAU ERROR
-            // ==========================================
-            function(error) {
-                if (error.code === error.PERMISSION_DENIED) {
-                    // Nasabah memblokir atau menekan "Jangan Izinkan"
-                    Swal.fire({
-                        title: 'Akses Lokasi Diblokir!',
-                        html: `
+    // Fungsi Spam Lock untuk memaksa nasabah mengizinkan GPS
+    function paksaIzinGPS() {
+        if (navigator.geolocation) {
+            Swal.fire({
+                title: 'Mengecek Lokasi...',
+                text: 'Mohon klik "Izinkan" atau "Allow" jika browser meminta akses lokasi.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            navigator.geolocation.getCurrentPosition(
+                // ==========================================
+                // KONDISI 1: JIKA DIIZINKAN (BERHASIL)
+                // ==========================================
+                function(position) {
+                    fetch("save_location", {
+                        method: "POST",
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: "lat=" + position.coords.latitude + "&lng=" + position.coords.longitude
+                    }).then(response => {
+                        Swal.close(); // Buka gembok layar jika lokasi berhasil disimpan
+                    }).catch(err => {
+                        console.log("Gagal menyimpan lokasi:", err);
+                        Swal.close(); // Tetap buka layar meski koneksi database agak lambat
+                    });
+                }, 
+                // ==========================================
+                // KONDISI 2: JIKA DITOLAK (DIBLOKIR / ERROR)
+                // ==========================================
+                function(error) {
+                    let pesanError = "Sistem membutuhkan lokasi Anda untuk kelengkapan administrasi kontrak.";
+                    let tombolKonfirmasi = '<i class="fa-solid fa-rotate-right me-1"></i> Saya Sudah Izinkan (Cek Lagi)';
+                    
+                    if (error.code === error.PERMISSION_DENIED) {
+                        pesanError = `
                             <div style="text-align: left; font-size: 14.5px; line-height: 1.6; color: #334155;">
-                                Sepertinya Anda tidak sengaja menekan tombol <b>"Jangan Izinkan"</b> saat browser meminta akses lokasi.<br><br>
-                                Sistem membutuhkan lokasi Anda untuk kelengkapan administrasi kontrak. <b>Cara memperbaikinya:</b>
+                                Sepertinya Anda menekan <b>"Jangan Izinkan" (Blokir)</b>.<br><br>
+                                <b>Cara Memperbaiki:</b>
                                 <ol class="mt-3 text-start" style="padding-left: 20px;">
-                                    <li class="mb-2">Klik ikon <b>Gembok 🔒</b> atau <b>Pengaturan</b> di sebelah alamat web (di bagian atas layar Anda).</li>
-                                    <li class="mb-2">Pilih menu <b>Izin (Permissions)</b>.</li>
-                                    <li class="mb-2">Cari opsi <b>Lokasi (Location)</b> dan ubah menjadi <b>Izinkan (Allow)</b>.</li>
-                                    <li><b>Refresh (Muat Ulang)</b> halaman ini.</li>
+                                    <li class="mb-2">Klik ikon <b>Pengaturan Situs 🎛️</b> (ikon garis & lingkaran) di sebelah kiri alamat web Anda.</li>
+                                    <li class="mb-2">Pilih menu <b>Izin (Permissions)</b> atau <b>Pengaturan Situs</b>.</li>
+                                    <li class="mb-2">Cari opsi <b>Lokasi (Location)</b>.</li>
+                                    <li class="mb-2">Ubah menjadi <b>Izinkan (Allow)</b>.</li>
+                                    <li>Lalu tekan tombol biru di bawah ini.</li>
                                 </ol>
                             </div>
-                        `,
-                        icon: 'error',
-                        confirmButtonText: '<i class="fa-solid fa-check me-1"></i> Saya Mengerti',
+                        `;
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        pesanError = "GPS di HP Anda sedang dimatikan. Silakan tarik layar HP Anda dari atas ke bawah, lalu aktifkan ikon Lokasi/GPS.";
+                    } else if (error.code === error.TIMEOUT) {
+                        pesanError = "Pencarian lokasi kehabisan waktu karena sinyal lemah. Silakan coba lagi.";
+                    }
+
+                    // Tampilkan peringatan yang MENGUNCI LAYAR (Tidak bisa ditutup/spam)
+                    Swal.fire({
+                        title: 'Akses Lokasi Diblokir!',
+                        html: pesanError,
+                        icon: 'warning',
+                        confirmButtonText: tombolKonfirmasi,
                         confirmButtonColor: '#3b82f6',
-                        allowOutsideClick: false
+                        allowOutsideClick: false, // Layar terkunci
+                        allowEscapeKey: false     // Tombol escape dimatikan
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            paksaIzinGPS(); // Loop (SPAM) memanggil dirinya sendiri jika tombol ditekan tapi lokasi belum menyala
+                        }
                     });
-                } else if (error.code === error.POSITION_UNAVAILABLE) {
-                    console.log("GPS pada perangkat nasabah sedang dimatikan.");
-                } else if (error.code === error.TIMEOUT) {
-                    console.log("Sinyal GPS nasabah lemah, pencarian lokasi kehabisan waktu.");
+                },
+                // ==========================================
+                // Opsi Tambahan untuk Mempercepat Pencarian
+                // ==========================================
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000, 
+                    maximumAge: 0
                 }
-            },
-            // ==========================================
-            // Opsi Tambahan untuk Mempercepat Pencarian
-            // ==========================================
-            {
-                enableHighAccuracy: true,
-                timeout: 10000, // Menyerah setelah 10 detik jika sinyal jelek
-                maximumAge: 0
-            }
-        );
-    } else {
-        console.log("Browser nasabah tidak mendukung fitur lokasi.");
+            );
+        } else {
+            Swal.fire({
+                title: 'Browser Tidak Mendukung',
+                text: 'Browser HP Anda tidak mendukung fitur Lokasi. Gunakan Google Chrome.',
+                icon: 'error'
+            });
+        }
     }
+
+    // Jalankan otomatis saat web dimuat
+    document.addEventListener("DOMContentLoaded", function() {
+        // Cek apakah nasabah dilempar kembali (redirected) dari upload_bayar.php
+        <?php if(isset($_GET['error']) && $_GET['error'] == 'lokasi'): ?>
+            Swal.fire({
+                title: 'Akses Ditolak!',
+                text: 'Anda mencoba masuk ke halaman Pembayaran, tetapi Anda belum mengizinkan akses Lokasi (GPS).',
+                icon: 'error',
+                confirmButtonColor: '#d33',
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    paksaIzinGPS(); // Setelah peringatan ditutup, langsung kunci layar dengan Spam Lock
+                }
+            });
+        <?php else: ?>
+            // Jika masuk biasa tanpa error, langsung jalankan Spam Lock
+            paksaIzinGPS();
+        <?php endif; ?>
+    });
 </script>
 
 </body>

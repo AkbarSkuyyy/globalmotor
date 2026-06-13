@@ -43,7 +43,7 @@ $nama  = aman($profil, 'nama');
 $no_hp_wa = (substr($no_hp, 0, 1) == '0') ? '62' . substr($no_hp, 1) : $no_hp;
 
 // Pesan otomatis untuk WhatsApp
-$pesan_wa = urlencode("Halo Bpk/Ibu *$nama*,\n\nSistem *GLOBAL MOTOR* mendeteksi bahwa akses Lokasi (GPS) pada perangkat Anda saat ini *TIDAK AKTIF / TERBLOKIR*.\n\nMohon bantuannya untuk:\n1. Buka website Nasabah Global Motor.\n2. Klik ikon *Gembok 🔒* di pojok kiri atas (sebelah alamat web).\n3. Ubah Izin Lokasi menjadi *Izinkan (Allow)*.\n4. Refresh halamannya.\n\nTerima kasih atas kerjasamanya.");
+$pesan_wa = urlencode("Halo Bpk/Ibu *$nama*,\n\nSistem *GLOBAL MOTOR* mendeteksi bahwa akses Lokasi (GPS) pada perangkat Anda saat ini *TIDAK AKTIF / TERBLOKIR*.\n\nMohon bantuannya untuk:\n1. Buka website Nasabah Global Motor.\n2. Klik ikon *Pengaturan Situs 🎛️* (ikon garis & lingkaran) di pojok kiri atas (sebelah alamat web).\n3. Ubah Izin Lokasi (Location) menjadi *Izinkan (Allow)*.\n4. Refresh halamannya.\n\nTerima kasih atas kerjasamanya.");
 $link_wa  = "https://wa.me/" . $no_hp_wa . "?text=" . $pesan_wa;
 
 // Kondisi penentu apakah GPS mati
@@ -122,7 +122,7 @@ $gps_mati = empty($lat) || empty($lng) || $lat == '0' || $lat == '0.00000000';
                         <i class="fa-brands fa-whatsapp fs-5 me-2 align-middle"></i> Ingatkan Nasabah
                     </button>
                 <?php else: ?>
-                    <a href="http://googleusercontent.com/maps.google.com/maps?q=<?= $lat ?>,<?= $lng ?>" target="_blank" class="btn btn-outline-success rounded-pill px-4 py-2 fw-bold shadow-sm">
+                    <a href="https://www.google.com/maps?q=<?= $lat ?>,<?= $lng ?>" target="_blank" class="btn btn-outline-success rounded-pill px-4 py-2 fw-bold shadow-sm">
                         <i class="fa-solid fa-location-arrow me-2"></i> Buka di Maps
                     </a>
                 <?php endif; ?>
