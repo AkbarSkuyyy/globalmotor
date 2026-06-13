@@ -1,8 +1,10 @@
 <?php
 require '../config/security.php';
 
-if (!isset($_SESSION['login']) || $_SESSION['role'] !== 'admin') {
-    header('Location: ../auth/login.php');
+// 1. PERBAIKAN: Gunakan user_id agar seragam dengan standar keamanan sebelumnya
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+    // PERBAIKAN: Hilangkan .php pada URL redirect
+    header('Location: ../auth/login');
     exit;
 }
 
@@ -19,17 +21,18 @@ $jumlah_notif = $notif['total'] ?? 0;
 /* ===== ROUTING ===== */
 $page = $_GET['page'] ?? 'home';
 
+// 2. PERBAIKAN: Tambahkan 'kontrak_lama_tambah' ke daftar whitelist route
 $allowed = [
     'home',
-    'kendaraan_tambah','stok_motor','kendaraan_edit','kredit_tambah',
-    'pembayaran','pembayaran_valid','cetak_struk',
+    'kendaraan_tambah','stok_motor','kendaraan_edit','kredit_tambah','kontrak_lama_tambah',
+    'pembayaran','pembayaran_valid','cetak_struk','pembayaran_manual',
     'laporan_keuangan','simulasi_kredit',
     'user_tambah','user_karyawan','user_nasabah',
     'nasabah_detail','nasabah_edit',
     'user_edit', 
     'user_reset',      
     'user_toggle',
-    'user_hapus',    
+    'user_hapus',   
     'audit_log',
     'pengaturan_umum','pengaturan_user','pengaturan_backup'
 ];
@@ -38,6 +41,7 @@ if (!in_array($page, $allowed)) {
     $page = 'home';
 }
 
+// Ini tetap pakai .php karena ini untuk memanggil file di dalam folder server
 $file = $page . '.php';
 
 // Fungsi penanda menu aktif
@@ -354,26 +358,28 @@ function isExpanded($arr){
     <div class="sidebar-scroll">
         <div class="nav-label">Menu Utama</div>
         
-        <a href="dashboard.php" class="<?= active('home') ?>">
+        <a href="dashboard" class="<?= active('home') ?>">
             <i class="fa-solid fa-house menu-icon"></i> Dashboard
         </a>
 
-        <a data-bs-toggle="collapse" href="#master" aria-expanded="<?= isExpanded(['kendaraan_tambah','stok_motor','kredit_tambah']) ?>" role="button">
+        <a data-bs-toggle="collapse" href="#master" aria-expanded="<?= isExpanded(['kendaraan_tambah','stok_motor','kredit_tambah','kontrak_lama_tambah']) ?>" role="button">
             <i class="fa-solid fa-box-open menu-icon"></i> Master Data
             <i class="fa-solid fa-chevron-right chevron-icon"></i>
         </a>
-        <div class="collapse submenu <?= openMenu(['kendaraan_tambah','stok_motor','kredit_tambah']) ?>" id="master">
-            <a href="dashboard.php?page=kredit_tambah" class="<?= active('kredit_tambah') ?>">Tambah Kredit</a>
-            <a href="dashboard.php?page=stok_motor" class="<?= active('stok_motor') ?>">Stok Motor</a>
+        <div class="collapse submenu <?= openMenu(['kendaraan_tambah','stok_motor','kredit_tambah','kontrak_lama_tambah']) ?>" id="master">
+            <a href="dashboard?page=kredit_tambah" class="<?= active('kredit_tambah') ?>">Tambah Kredit</a>
+            <a href="dashboard?page=stok_motor" class="<?= active('stok_motor') ?>">Stok Motor</a>
+            <a href="dashboard?page=kontrak_lama_tambah" class="<?= active('kontrak_lama_tambah') ?>">Migrasi Data Lama</a>
         </div>
 
-        <a data-bs-toggle="collapse" href="#trx" aria-expanded="<?= isExpanded(['pembayaran','cetak_struk']) ?>" role="button">
+        <a data-bs-toggle="collapse" href="#trx" aria-expanded="<?= isExpanded(['pembayaran','cetak_struk','pembayaran_manual']) ?>" role="button">
             <i class="fa-solid fa-file-invoice-dollar menu-icon"></i> Transaksi
             <i class="fa-solid fa-chevron-right chevron-icon"></i>
         </a>
-        <div class="collapse submenu <?= openMenu(['pembayaran','cetak_struk']) ?>" id="trx">
-            <a href="dashboard.php?page=pembayaran" class="<?= active('pembayaran') ?>">Validasi Pembayaran</a>
-            <a href="dashboard.php?page=cetak_struk" class="<?= active('cetak_struk') ?>">Cetak Struk</a>
+        <div class="collapse submenu <?= openMenu(['pembayaran','cetak_struk','pembayaran_manual']) ?>" id="trx">
+            <a href="dashboard?page=pembayaran" class="<?= active('pembayaran') ?>">Validasi Pembayaran</a>
+            <a href="dashboard?page=pembayaran_manual" class="<?= active('pembayaran_manual') ?>">Input Bayar Manual</a>
+            <a href="dashboard?page=cetak_struk" class="<?= active('cetak_struk') ?>">Cetak Struk</a>
         </div>
 
         <a data-bs-toggle="collapse" href="#keu" aria-expanded="<?= isExpanded(['laporan_keuangan','simulasi_kredit']) ?>" role="button">
@@ -381,8 +387,8 @@ function isExpanded($arr){
             <i class="fa-solid fa-chevron-right chevron-icon"></i>
         </a>
         <div class="collapse submenu <?= openMenu(['laporan_keuangan','simulasi_kredit']) ?>" id="keu">
-            <a href="dashboard.php?page=laporan_keuangan" class="<?= active('laporan_keuangan') ?>">Laporan Keuangan</a>
-            <a href="dashboard.php?page=simulasi_kredit" class="<?= active('simulasi_kredit') ?>">Simulasi Kredit</a>
+            <a href="dashboard?page=laporan_keuangan" class="<?= active('laporan_keuangan') ?>">Laporan Keuangan</a>
+            <a href="dashboard?page=simulasi_kredit" class="<?= active('simulasi_kredit') ?>">Simulasi Kredit</a>
         </div>
 
         <div class="nav-label">Sistem & Akses</div>
@@ -392,18 +398,18 @@ function isExpanded($arr){
             <i class="fa-solid fa-chevron-right chevron-icon"></i>
         </a>
         <div class="collapse submenu <?= openMenu(['user_tambah','user_karyawan','user_nasabah','nasabah_detail','nasabah_edit']) ?>" id="user">
-            <a href="dashboard.php?page=user_tambah" class="<?= active('user_tambah') ?>">Tambah User</a>
-            <a href="dashboard.php?page=user_karyawan" class="<?= active('user_karyawan') ?>">Data Karyawan</a>
-            <a href="dashboard.php?page=user_nasabah" class="<?= active('user_nasabah') ?>">Data Nasabah</a>
+            <a href="dashboard?page=user_tambah" class="<?= active('user_tambah') ?>">Tambah User</a>
+            <a href="dashboard?page=user_karyawan" class="<?= active('user_karyawan') ?>">Data Karyawan</a>
+            <a href="dashboard?page=user_nasabah" class="<?= active('user_nasabah') ?>">Data Nasabah</a>
         </div>
 
-        <a href="dashboard.php?page=audit_log" class="<?= active('audit_log') ?>">
+        <a href="dashboard?page=audit_log" class="<?= active('audit_log') ?>">
             <i class="fa-solid fa-shield-halved menu-icon"></i> Audit Log
         </a>
 
         <div class="mx-3 my-3 border-top" style="border-color: rgba(255,255,255,0.05) !important;"></div>
 
-        <a href="../auth/logout.php" class="text-danger fw-bold hover-danger">
+        <a href="../auth/logout" class="text-danger fw-bold hover-danger">
             <i class="fa-solid fa-right-from-bracket menu-icon"></i> Logout
         </a>
     </div>
@@ -416,7 +422,7 @@ function isExpanded($arr){
             <i class="fa-solid fa-bars"></i>
         </button>
 
-        <div class="bell-wrapper shadow-sm" onclick="location.href='dashboard.php?page=pembayaran'" title="Notifikasi Validasi Pembayaran">
+        <div class="bell-wrapper shadow-sm" onclick="location.href='dashboard?page=pembayaran'" title="Notifikasi Validasi Pembayaran">
             <i class="fa-regular fa-bell"></i>
             <?php if($jumlah_notif > 0){ ?>
                 <span class="bell-badge"><?= $jumlah_notif ?></span>
@@ -426,16 +432,16 @@ function isExpanded($arr){
 
     <div class="container-fluid p-4">
     <?php
+    // Variabel ini digunakan untuk memanggil file .php ke dalam halaman (include), maka biarkan tetap menggunakan .php
     $file = $page . '.php';
     
-    // Pastikan file benar-benar ada di folder tersebut
     if (file_exists($file)) {
         include $file;
     } else {
         include 'dashboard_home.php';
     }
     ?>
-</div>
+    </div>
 
 </div>
 

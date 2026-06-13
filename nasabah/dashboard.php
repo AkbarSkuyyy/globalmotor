@@ -3,7 +3,8 @@ session_start();
 require '../config/security.php';
 
 if ($_SESSION['role'] !== 'nasabah') {
-    header('Location: ../auth/login.php');
+    // PERBAIKAN: Hilangkan .php pada URL redirect
+    header('Location: ../auth/login');
     exit;
 }
 
@@ -119,12 +120,15 @@ date_default_timezone_set('Asia/Jakarta');
             display:flex;
             justify-content:space-around;
             margin-top:30px;
+            flex-wrap: wrap; 
+            gap: 15px;
         }
 
         .menu-item{
             text-align:center;
             text-decoration:none;
             color:#374151;
+            width: 70px;
         }
 
         .menu-circle{
@@ -139,6 +143,7 @@ date_default_timezone_set('Asia/Jakarta');
             font-size:24px;
             color:#2563eb;
             transition:all .3s ease;
+            margin: 0 auto;
         }
 
         .menu-circle:hover{
@@ -218,7 +223,7 @@ date_default_timezone_set('Asia/Jakarta');
                            ⏳ Menunggu Validasi Admin
                         </button>
                     <?php } else { ?>
-                        <a href="upload_bayar.php?id=<?php echo urlencode($next['id'] ?? ''); ?>&jumlah=<?php echo urlencode($next['jumlah'] ?? 0); ?>"
+                        <a href="upload_bayar?id=<?php echo urlencode($next['id'] ?? ''); ?>&jumlah=<?php echo urlencode($next['jumlah'] ?? 0); ?>"
                            class="btn btn-primary w-100 mt-3 rounded-4 py-2 fw-bold">
                            💳 Bayar Sekarang
                         </a>
@@ -239,14 +244,14 @@ date_default_timezone_set('Asia/Jakarta');
         <div class="menu-box">
 
             <?php if ($jual) { ?>
-                <a href="kartu_angsuran.php?id=<?= urlencode($jual['id']) ?>" class="menu-item">
+                <a href="kartu_angsuran?id=<?= urlencode($jual['id']) ?>" class="menu-item">
                     <div class="menu-circle">
                         <i class="bi bi-file-earmark-text"></i>
                     </div>
                     <div class="menu-label">Kartu</div>
                 </a>
 
-                <a href="riwayat_pembayaran.php" class="menu-item">
+                <a href="riwayat_pembayaran" class="menu-item">
                     <div class="menu-circle">
                         <i class="bi bi-clock-history"></i>
                     </div>
@@ -254,7 +259,14 @@ date_default_timezone_set('Asia/Jakarta');
                 </a>
             <?php } ?>
 
-            <a href="../auth/logout.php" class="menu-item">
+            <a href="ubah_password" class="menu-item">
+                <div class="menu-circle" style="color: #f59e0b;">
+                    <i class="bi bi-key-fill"></i>
+                </div>
+                <div class="menu-label">Password</div>
+            </a>
+
+            <a href="../auth/logout" class="menu-item">
                 <div class="menu-circle text-danger">
                     <i class="bi bi-box-arrow-right"></i>
                 </div>
@@ -262,21 +274,81 @@ date_default_timezone_set('Asia/Jakarta');
             </a>
 
         </div>
+        
+    <div id="gps-alert-container" class="container mt-3" style="display: none;">
+    <div class="alert alert-danger shadow-sm border-0 rounded-4 d-flex align-items-center justify-content-between p-3">
+        <div class="d-flex align-items-center">
+            <i class="fa-solid fa-location-slash fs-4 me-3"></i>
+            <div>
+                <span class="fw-bold d-block">Lokasi Belum Diizinkan!</span>
+                <small class="small">Akses lokasi diperlukan untuk verifikasi pembayaran.</small>
+            </div>
+        </div>
+        <button onclick="requestGPSAgain()" class="btn btn-danger btn-sm rounded-pill px-3 fw-bold">
+            <i class="fa-solid fa-location-dot me-1"></i> Izinkan
+        </button>
+    </div>
+</div>
 
-    <script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
     if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            fetch("save_location.php", {
-                method: "POST",
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: "lat=" + position.coords.latitude +
-                      "&lng=" + position.coords.longitude
-            }).catch(err => console.log(err));
-        }, function(error) {
-            console.log("Geolocation error: " + error.message);
-        });
+        navigator.geolocation.getCurrentPosition(
+            // ==========================================
+            // KONDISI 1: JIKA NASABAH MENGIZINKAN (ALLOW)
+            // ==========================================
+            function(position) {
+                // Tembakkan data lokasi ke API save_location secara diam-diam
+                fetch("save_location", {
+                    method: "POST",
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: "lat=" + position.coords.latitude + "&lng=" + position.coords.longitude
+                }).catch(err => console.log("Gagal mengirim lokasi:", err));
+            }, 
+            // ==========================================
+            // KONDISI 2: JIKA LOKASI DITOLAK ATAU ERROR
+            // ==========================================
+            function(error) {
+                if (error.code === error.PERMISSION_DENIED) {
+                    // Nasabah memblokir atau menekan "Jangan Izinkan"
+                    Swal.fire({
+                        title: 'Akses Lokasi Diblokir!',
+                        html: `
+                            <div style="text-align: left; font-size: 14.5px; line-height: 1.6; color: #334155;">
+                                Sepertinya Anda tidak sengaja menekan tombol <b>"Jangan Izinkan"</b> saat browser meminta akses lokasi.<br><br>
+                                Sistem membutuhkan lokasi Anda untuk kelengkapan administrasi kontrak. <b>Cara memperbaikinya:</b>
+                                <ol class="mt-3 text-start" style="padding-left: 20px;">
+                                    <li class="mb-2">Klik ikon <b>Gembok 🔒</b> atau <b>Pengaturan</b> di sebelah alamat web (di bagian atas layar Anda).</li>
+                                    <li class="mb-2">Pilih menu <b>Izin (Permissions)</b>.</li>
+                                    <li class="mb-2">Cari opsi <b>Lokasi (Location)</b> dan ubah menjadi <b>Izinkan (Allow)</b>.</li>
+                                    <li><b>Refresh (Muat Ulang)</b> halaman ini.</li>
+                                </ol>
+                            </div>
+                        `,
+                        icon: 'error',
+                        confirmButtonText: '<i class="fa-solid fa-check me-1"></i> Saya Mengerti',
+                        confirmButtonColor: '#3b82f6',
+                        allowOutsideClick: false
+                    });
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    console.log("GPS pada perangkat nasabah sedang dimatikan.");
+                } else if (error.code === error.TIMEOUT) {
+                    console.log("Sinyal GPS nasabah lemah, pencarian lokasi kehabisan waktu.");
+                }
+            },
+            // ==========================================
+            // Opsi Tambahan untuk Mempercepat Pencarian
+            // ==========================================
+            {
+                enableHighAccuracy: true,
+                timeout: 10000, // Menyerah setelah 10 detik jika sinyal jelek
+                maximumAge: 0
+            }
+        );
+    } else {
+        console.log("Browser nasabah tidak mendukung fitur lokasi.");
     }
-    </script>
+</script>
 
 </body>
 </html>

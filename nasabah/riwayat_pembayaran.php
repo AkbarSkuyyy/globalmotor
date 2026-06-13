@@ -2,8 +2,9 @@
 session_start();
 require '../config/security.php';
 
-if ($_SESSION['role'] !== 'nasabah') {
-    header('Location: ../auth/login.php');
+// 1. Perbaikan Keamanan Sesi dan Clean URL
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'nasabah') {
+    header('Location: ../auth/login');
     exit;
 }
 
@@ -42,10 +43,19 @@ function rupiah($angka) {
 <head>
     <title>Riwayat Pembayaran</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { background-color: #f1f5f9; font-family: 'Inter', sans-serif; }
+        body { 
+            background-color: #f1f5f9; 
+            font-family: 'Inter', sans-serif; 
+            color: #334155;
+        }
+        h4 { font-family: 'Montserrat', sans-serif; }
         .card { border-radius: 1rem; }
     </style>
 </head>
@@ -54,17 +64,17 @@ function rupiah($angka) {
 <div class="container mt-4 mb-5" style="max-width: 1000px;">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="fw-bold m-0"><i class="bi bi-clock-history text-primary me-2"></i>Riwayat Pembayaran</h4>
-        <a href="dashboard.php" class="btn btn-outline-secondary rounded-pill px-4">
+        <a href="dashboard" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
             <i class="bi bi-arrow-left me-2"></i>Kembali
         </a>
     </div>
 
-    <div class="card shadow-sm border-0 rounded-4 p-0">
+    <div class="card shadow-sm border-0 rounded-4 p-0 overflow-hidden">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-4">Bulan</th>
+                        <th class="ps-4 py-3">Bulan</th>
                         <th>Tagihan</th>
                         <th>Kode Unik</th>
                         <th>Total Transfer</th>
@@ -77,30 +87,37 @@ function rupiah($angka) {
                 if ($data && mysqli_num_rows($data) > 0) {
                     while($r = mysqli_fetch_assoc($data)){
                         $total = $r['jumlah_angsuran'] + $r['kode_unik'];
+                        
+                        // 2. Logika Status Cerdas (Termasuk Status Ditolak)
+                        if ($r['status'] == 'VALID') {
+                            $badge = '<span class="badge bg-success rounded-pill px-3 py-2"><i class="bi bi-check-circle me-1"></i>VALID</span>';
+                        } elseif ($r['status'] == 'DITOLAK') {
+                            $badge = '<span class="badge bg-danger rounded-pill px-3 py-2"><i class="bi bi-x-circle me-1"></i>DITOLAK</span>';
+                        } else {
+                            $badge = '<span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="bi bi-hourglass-split me-1"></i>PENDING</span>';
+                        }
                 ?>
                     <tr>
                         <td class="ps-4">
-                            <span class="badge bg-info text-dark rounded-pill px-3">Ke-<?= htmlspecialchars($r['bulan_ke']) ?></span>
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info rounded-pill px-3 py-2">
+                                Ke-<?= htmlspecialchars($r['bulan_ke']) ?>
+                            </span>
                         </td>
-                        <td class="text-muted"><?= rupiah($r['jumlah_angsuran']) ?></td>
-                        <td class="text-secondary"><?= htmlspecialchars($r['kode_unik']) ?></td>
+                        <td class="text-muted fw-medium"><?= rupiah($r['jumlah_angsuran']) ?></td>
+                        <td class="text-secondary font-monospace">
+                            <?= $r['kode_unik'] == 0 ? '-' : htmlspecialchars($r['kode_unik']) ?>
+                        </td>
                         <td class="fw-bold text-primary"><?= rupiah($total) ?></td>
-                        <td>
-                            <?php if($r['status'] == 'VALID'){ ?>
-                                <span class="badge bg-success rounded-pill px-3"><i class="bi bi-check-circle me-1"></i>VALID</span>
-                            <?php } else { ?>
-                                <span class="badge bg-warning text-dark rounded-pill px-3"><i class="bi bi-hourglass-split me-1"></i>PENDING</span>
-                            <?php } ?>
-                        </td>
+                        <td><?= $badge ?></td>
                         <td class="pe-4 text-secondary small">
-                            <div class="fw-semibold"><?= date('d M Y', strtotime($r['waktu_upload'])) ?></div>
+                            <div class="fw-semibold text-dark"><?= date('d M Y', strtotime($r['waktu_upload'])) ?></div>
                             <div><?= date('H:i', strtotime($r['waktu_upload'])) ?> WIB</div>
                         </td>
                     </tr>
                 <?php 
                     } 
                 } else {
-                    echo '<tr><td colspan="6" class="text-center py-5 text-muted">Belum ada riwayat pembayaran yang diupload.</td></tr>';
+                    echo '<tr><td colspan="6" class="text-center py-5 text-muted fst-italic"><i class="bi bi-receipt fs-2 d-block mb-2 opacity-50"></i>Belum ada riwayat pembayaran yang diupload.</td></tr>';
                 }
                 ?>
                 </tbody>
@@ -109,5 +126,6 @@ function rupiah($angka) {
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
