@@ -139,7 +139,7 @@ margin:0;
 <img src="../assets/logohitam.png" class="logo">
 
 <div><b>GLOBAL MOTOR</b></div>
-<div>Jl. Bakrie Entong, Kec. Hanau, Kel. Pembuang Hulu 1</div>
+<div>Jl.Bakrie Entong, Kec.Hanau, Kel.Pembuang Hulu 1</div>
 
 <hr>
 
@@ -213,7 +213,7 @@ sebagai bukti transaksi sah
 
 <div class="pesan">
 Informasi lebih lanjut<br>
-08123456789
+085252930293
 </div>
 
 <div>Terima Kasih</div>
