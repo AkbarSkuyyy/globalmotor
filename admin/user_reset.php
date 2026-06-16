@@ -73,9 +73,10 @@ try {
     $mail->send();
 } catch (Exception $e) {}
 
-/* ================= REDIRECT DINAMIS ================= */
+/* ================= REDIRECT DINAMIS & TAMPILKAN PASSWORD ================= */
+// PERBAIKAN: Menampilkan alert berisi $password_plain agar admin bisa menginfokan ke nasabah
 echo "<script>
-    alert('Password berhasil direset!');
-    window.location='dashboard.php?page=$redirect';
+    alert('PASSWORD BERHASIL DIRESET!\\n\\nNama Nasabah: $nama\\nPassword Baru: $password_plain\\n\\nSilakan copy/catat password ini untuk diberikan kepada nasabah (Sistem juga telah mengirimkannya ke email nasabah).');
+    window.location='dashboard?page=$redirect';
 </script>";
 ?>

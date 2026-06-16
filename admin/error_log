@@ -335,3 +335,4 @@ Stack trace:
 [20-May-2026 18:01:38 Asia/Jakarta] PHP Warning:  Undefined array key "harga" in /home/globalmo/public_html/admin/simulasi_kredit.php on line 56
 [20-May-2026 19:25:55 Asia/Jakarta] PHP Deprecated:  preg_replace(): Passing null to parameter #3 ($subject) of type array|string is deprecated in /home/globalmo/public_html/admin/user_reset.php on line 43
 [20-May-2026 20:12:20 Asia/Jakarta] PHP Deprecated:  preg_replace(): Passing null to parameter #3 ($subject) of type array|string is deprecated in /home/globalmo/public_html/admin/user_reset.php on line 43
+[13-Jun-2026 10:03:30 Asia/Jakarta] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in /home/globalmo/public_html/admin/kontrak_lama_tambah.php on line 2

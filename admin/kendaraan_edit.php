@@ -1,5 +1,5 @@
 <?php
-// admin/kendaraan_edit.php (Di-include di dashboard.php)
+// File: admin/kendaraan_edit.php (Di-include dari dashboard.php)
 
 $id_kendaraan = $_GET['id'] ?? '';
 if (empty($id_kendaraan)) {
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_motor'])) {
                 confirmButtonColor: '#10b981',
                 allowOutsideClick: false
             }).then(() => {
-                window.history.back(); // Kembali ke halaman sebelumnya (Nasabah Detail)
+                window.history.back(); 
             });
         });
     </script>
@@ -51,8 +51,10 @@ if (!$motor) {
 
 <div class="container-fluid mt-4 mb-5" style="max-width: 700px;">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="fw-bold m-0"><i class="fa-solid fa-pen-to-square text-primary me-2"></i>Edit Data Motor</h4>
-        <button onclick="window.history.back()" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">Batal</button>
+        <h4 class="fw-bold m-0 text-dark"><i class="fa-solid fa-pen-to-square text-primary me-2"></i>Edit Data Motor</h4>
+        <button onclick="window.history.back()" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
+            <i class="fa-solid fa-arrow-left me-2"></i>Batal
+        </button>
     </div>
 
     <form method="POST" action="" class="card shadow-sm border-0 rounded-4 p-4 bg-white">
@@ -71,20 +73,20 @@ if (!$motor) {
             </div>
             <div class="col-md-6">
                 <label class="form-label fw-bold small text-secondary">No. Rangka</label>
-                <input type="text" name="no_rangka" class="form-control text-uppercase" value="<?= htmlspecialchars($motor['no_rangka']) ?>" required>
+                <input type="text" name="no_rangka" class="form-control text-uppercase font-monospace" value="<?= htmlspecialchars($motor['no_rangka']) ?>" required>
             </div>
             <div class="col-md-6">
                 <label class="form-label fw-bold small text-secondary">No. Mesin</label>
-                <input type="text" name="no_mesin" class="form-control text-uppercase" value="<?= htmlspecialchars($motor['no_mesin']) ?>" required>
+                <input type="text" name="no_mesin" class="form-control text-uppercase font-monospace" value="<?= htmlspecialchars($motor['no_mesin']) ?>" required>
             </div>
             <div class="col-md-12 mt-4">
                 <label class="form-label fw-bold small text-secondary">Harga OTR (Rp)</label>
-                <input type="text" name="harga_cash" id="harga_cash" class="form-control fw-bold text-success" value="<?= number_format($motor['harga_cash'],0,',','.') ?>" required>
+                <input type="text" name="harga_cash" id="harga_cash" class="form-control form-control-lg fw-bold text-success" value="<?= number_format($motor['harga_cash'],0,',','.') ?>" required>
             </div>
         </div>
 
-        <div class="mt-4 text-end border-top pt-3">
-            <button type="submit" name="update_motor" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">
+        <div class="mt-4 text-end border-top pt-4">
+            <button type="submit" name="update_motor" class="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow-sm">
                 <i class="fa-solid fa-save me-2"></i> Simpan Perubahan
             </button>
         </div>

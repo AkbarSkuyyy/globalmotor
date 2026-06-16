@@ -157,7 +157,7 @@ $log = mysqli_query($conn,"
 <div class="container-fluid pt-2">
 
     <div class="mb-4">
-        <h3 class="fw-bold text-dark m-0">Selamat Datang, Admin ðŸ‘‹</h3>
+        <h3 class="fw-bold text-dark m-0">Selamat Datang, Admin 👋</h3>
         <p class="text-secondary small m-0">
             Ringkasan performa GLOBAL MOTOR bulan <?= date('F Y') ?>
         </p>
@@ -268,7 +268,7 @@ $log = mysqli_query($conn,"
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
                         <h6 class="fw-bold m-0 text-dark text-uppercase">Aktivitas Terakhir</h6>
-                        <a href="dashboard.php?page=audit_log" class="text-decoration-none small text-primary fw-medium">Lihat Semua</a>
+                        <a href="dashboard?page=audit_log" class="text-decoration-none small text-primary fw-medium">Lihat Semua</a>
                     </div>
                     
                     <div class="d-flex flex-column gap-2">
@@ -307,7 +307,7 @@ $log = mysqli_query($conn,"
                     
                     <div class="d-flex flex-column gap-3">
                         
-                        <a href="dashboard.php?page=kredit_tambah" class="action-btn-custom">
+                        <a href="dashboard?page=kredit_tambah" class="action-btn-custom">
                             <div class="action-icon-box bg-primary bg-opacity-10 text-primary shadow-sm">
                                 <i class="fa-solid fa-file-invoice-dollar"></i>
                             </div>
@@ -318,7 +318,7 @@ $log = mysqli_query($conn,"
                             <i class="fa-solid fa-chevron-right text-muted fs-6"></i>
                         </a>
 
-                        <a href="dashboard.php?page=kendaraan_tambah" class="action-btn-custom">
+                        <a href="dashboard?page=kendaraan_tambah" class="action-btn-custom">
                             <div class="action-icon-box bg-success bg-opacity-10 text-success shadow-sm">
                                 <i class="fa-solid fa-motorcycle"></i>
                             </div>
@@ -329,7 +329,7 @@ $log = mysqli_query($conn,"
                             <i class="fa-solid fa-chevron-right text-muted fs-6"></i>
                         </a>
 
-                        <a href="dashboard.php?page=user_tambah" class="action-btn-custom">
+                        <a href="dashboard?page=user_tambah" class="action-btn-custom">
                             <div class="action-icon-box bg-warning bg-opacity-10 text-warning shadow-sm">
                                 <i class="fa-solid fa-user-plus"></i>
                             </div>
