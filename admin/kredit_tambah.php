@@ -51,9 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_kredit'])){
     $password_plain = ucfirst($nama_part).$random;
     $password_hashed = password_hash($password_plain, PASSWORD_DEFAULT);
 
+    // PERBAIKAN: Menambahkan kolom no_hp ke tabel users
     mysqli_query($conn,"
-        INSERT INTO users (username,password,role,status,created_at)
-        VALUES ('$no_kontrak','$password_hashed','nasabah','AKTIF',NOW())
+        INSERT INTO users (username, password, role, status, created_at, no_hp)
+        VALUES ('$no_kontrak', '$password_hashed', 'nasabah', 'AKTIF', NOW(), '$no_hp')
     ");
 
     /* ================= PROFIL NASABAH (Tanpa Email) ================= */
@@ -111,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_kredit'])){
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold small text-secondary">Nomor WhatsApp/HP</label>
-                            <input type="number" name="no_hp" class="form-control" placeholder="08..." required>
+                            <input type="tel" inputmode="numeric" name="no_hp" class="form-control" placeholder="08..." required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold small text-secondary">Jenis Kelamin</label>

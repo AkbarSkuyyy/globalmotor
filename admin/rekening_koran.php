@@ -38,13 +38,17 @@ $q_angsuran = mysqli_query($conn, "
         body { font-family: Arial, sans-serif; font-size: 13px; color: #333; margin: 40px; }
         .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
         .header h2 { margin: 0; font-size: 22px; text-transform: uppercase; letter-spacing: 1px; }
-        .info-table { width: 100%; margin-bottom: 25px; }
+        .info-table { width: 100%; margin-bottom: 25px; font-size: 13px; }
         .info-table td { padding: 5px; vertical-align: top; }
-        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .data-table th, .data-table td { border: 1px solid #000; padding: 10px 8px; text-align: center; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+        .data-table th, .data-table td { border: 1px solid #000; padding: 8px 6px; text-align: center; }
         .data-table th { background-color: #f2f2f2; font-weight: bold; }
         .text-right { text-align: right !important; }
+        
+        /* Warna Status */
         .status-lunas { color: #15803d; font-weight: bold; }
+        .status-sebagian { color: #d97706; font-weight: bold; } /* Oranye untuk bayar kurang */
+        .status-pending { color: #2563eb; font-weight: bold; }
         .status-belum { color: #dc2626; font-weight: bold; }
         
         @media print { 
@@ -91,32 +95,54 @@ $q_angsuran = mysqli_query($conn, "
         <thead>
             <tr>
                 <th width="5%">Bln</th>
-                <th width="15%">Jatuh Tempo</th>
-                <th width="20%">Tagihan Asli (Rp)</th>
-                <th width="20%">Sisa Hutang (Rp)</th>
-                <th width="20%">Tanggal Bayar</th>
-                <th width="20%">Status</th>
+                <th width="14%">Jatuh Tempo</th>
+                <th width="16%">Tagihan Asli (Rp)</th>
+                <th width="16%">Telah Bayar (Rp)</th>
+                <th width="16%">Kurang Bayar (Rp)</th>
+                <th width="17%">Tgl Bayar Terakhir</th>
+                <th width="16%">Status</th>
             </tr>
         </thead>
         <tbody>
             <?php while($a = mysqli_fetch_assoc($q_angsuran)): 
-                // Jika sisa tagihan NULL (data lama), anggap sama dengan tagihan awal
-                $sisa_hutang = is_null($a['sisa_tagihan']) ? $a['jumlah'] : $a['sisa_tagihan'];
-                if ($a['status'] == 'LUNAS') $sisa_hutang = 0;
+                
+                $tagihan_asli = (int)$a['jumlah'];
+                $telah_dibayar = (int)$a['uang_bayar'];
+                $kurang_bayar = (int)$a['kurang_bayar'];
+
+                // ==========================================
+                // TRIK BACKWARD COMPATIBILITY DATA LAMA
+                // ==========================================
+                if ($a['status'] === 'LUNAS' && $telah_dibayar === 0) {
+                    $telah_dibayar = $tagihan_asli;
+                    $kurang_bayar  = 0;
+                } elseif ($a['status'] === 'BELUM' && $kurang_bayar === 0) {
+                    $kurang_bayar  = $tagihan_asli;
+                    $telah_dibayar = 0;
+                }
             ?>
             <tr>
                 <td><?= $a['bulan_ke'] ?></td>
                 <td><?= date('d/m/Y', strtotime($a['jatuh_tempo'])) ?></td>
-                <td class="text-right"><?= number_format($a['jumlah'],0,',','.') ?></td>
-                <td class="text-right" style="color: <?= $sisa_hutang > 0 ? '#dc2626' : '#15803d' ?>; font-weight: bold;">
-                    <?= number_format($sisa_hutang,0,',','.') ?>
+                <td class="text-right"><?= number_format($tagihan_asli, 0, ',', '.') ?></td>
+                <td class="text-right" style="color:#15803d; font-weight:500;">
+                    <?= number_format($telah_dibayar, 0, ',', '.') ?>
+                </td>
+                <td class="text-right" style="color: <?= $kurang_bayar > 0 ? '#dc2626' : '#333' ?>; font-weight: <?= $kurang_bayar > 0 ? 'bold' : 'normal' ?>;">
+                    <?= number_format($kurang_bayar, 0, ',', '.') ?>
                 </td>
                 <td><?= $a['tgl_bayar'] ? date('d/m/Y H:i', strtotime($a['tgl_bayar'])) : '-' ?></td>
                 <td>
                     <?php 
-                        if ($a['status'] == 'LUNAS') echo '<span class="status-lunas">LUNAS</span>';
-                        elseif ($a['status'] == 'PENDING') echo 'PROSES VALIDASI';
-                        else echo '<span class="status-belum">BELUM BAYAR</span>';
+                        if ($a['status'] === 'LUNAS') {
+                            echo '<span class="status-lunas">LUNAS</span>';
+                        } elseif ($a['status'] === 'SEBAGIAN') {
+                            echo '<span class="status-sebagian">BAYAR SEBAGIAN</span>';
+                        } elseif ($a['status'] === 'PENDING') {
+                            echo '<span class="status-pending">PROSES VALIDASI</span>';
+                        } else {
+                            echo '<span class="status-belum">BELUM BAYAR</span>';
+                        }
                     ?>
                 </td>
             </tr>

@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_motor'])) {
     $warna      = mysqli_real_escape_string($conn, $_POST['warna']);
     $no_rangka  = mysqli_real_escape_string($conn, $_POST['no_rangka']);
     $no_mesin   = mysqli_real_escape_string($conn, $_POST['no_mesin']);
+    // Filter hanya mengambil angka (mengabaikan 'Rp' dan titik)
     $harga_cash = preg_replace('/[^0-9]/', '', $_POST['harga_cash']);
 
     mysqli_query($conn, "
@@ -33,7 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_motor'])) {
                 confirmButtonColor: '#10b981',
                 allowOutsideClick: false
             }).then(() => {
-                window.history.back(); 
+                // Redirect agar aman dari Error Resubmission Browser
+                window.location = document.referrer ? document.referrer : 'dashboard'; 
             });
         });
     </script>
@@ -52,12 +54,12 @@ if (!$motor) {
 <div class="container-fluid mt-4 mb-5" style="max-width: 700px;">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="fw-bold m-0 text-dark"><i class="fa-solid fa-pen-to-square text-primary me-2"></i>Edit Data Motor</h4>
-        <button onclick="window.history.back()" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
+        <a href="dashboard" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
             <i class="fa-solid fa-arrow-left me-2"></i>Batal
-        </button>
+        </a>
     </div>
 
-    <form method="POST" action="" class="card shadow-sm border-0 rounded-4 p-4 bg-white">
+    <form method="POST" action="" class="card shadow-sm border-0 rounded-4 p-4 bg-white needs-validation" novalidate>
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label fw-bold small text-secondary">Merek</label>
@@ -81,7 +83,7 @@ if (!$motor) {
             </div>
             <div class="col-md-12 mt-4">
                 <label class="form-label fw-bold small text-secondary">Harga OTR (Rp)</label>
-                <input type="text" name="harga_cash" id="harga_cash" class="form-control form-control-lg fw-bold text-success" value="<?= number_format($motor['harga_cash'],0,',','.') ?>" required>
+                <input type="text" name="harga_cash" id="harga_cash" class="form-control form-control-lg fw-bold text-success" value="Rp <?= number_format($motor['harga_cash'],0,',','.') ?>" required>
             </div>
         </div>
 
@@ -94,10 +96,26 @@ if (!$motor) {
 </div>
 
 <script>
+    // JS Format disamakan dengan modul tambah kredit
     const hargaInput = document.getElementById('harga_cash');
     hargaInput.addEventListener('input', function() {
         let angka = this.value.replace(/[^0-9]/g, '');
         if (angka === '') { this.value = ''; return; }
-        this.value = angka.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        this.value = 'Rp ' + angka.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     });
+
+    // Validasi form bootstrap
+    (() => {
+        'use strict'
+        const forms = document.querySelectorAll('.needs-validation')
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })();
 </script>
