@@ -1,5 +1,5 @@
 <?php
-// File: admin/kendaraan_edit.php (Di-include dari dashboard.php)
+// admin/kendaraan_edit.php (Di-include dari dashboard.php)
 
 $id_kendaraan = $_GET['id'] ?? '';
 if (empty($id_kendaraan)) {

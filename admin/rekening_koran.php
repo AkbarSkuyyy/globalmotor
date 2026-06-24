@@ -1,5 +1,5 @@
 <?php
-// File: admin/rekening_koran.php (Berdiri sendiri, bukan di dalam dashboard.php)
+// admin/rekening_koran.php 
 session_start();
 include '../config/database.php';
 
@@ -43,7 +43,6 @@ $q_angsuran = mysqli_query($conn, "
         .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .data-table th, .data-table td { border: 1px solid #000; padding: 10px 8px; text-align: center; }
         .data-table th { background-color: #f2f2f2; font-weight: bold; }
-        .text-left { text-align: left !important; }
         .text-right { text-align: right !important; }
         .status-lunas { color: #15803d; font-weight: bold; }
         .status-belum { color: #dc2626; font-weight: bold; }
@@ -101,7 +100,7 @@ $q_angsuran = mysqli_query($conn, "
         </thead>
         <tbody>
             <?php while($a = mysqli_fetch_assoc($q_angsuran)): 
-                // Jika sisa tagihan NULL (data lama sebelum update database), anggap sama dengan tagihan awal
+                // Jika sisa tagihan NULL (data lama), anggap sama dengan tagihan awal
                 $sisa_hutang = is_null($a['sisa_tagihan']) ? $a['jumlah'] : $a['sisa_tagihan'];
                 if ($a['status'] == 'LUNAS') $sisa_hutang = 0;
             ?>

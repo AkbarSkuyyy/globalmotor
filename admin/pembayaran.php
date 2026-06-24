@@ -1,10 +1,12 @@
 <?php
+// admin/pembayaran.php
 // Tidak perlu session_start() karena sudah di dalam dashboard.php
 
 include '../config/database.php';
 
+// PERBAIKAN: Tambahkan a.sisa_tagihan pada Query
 $pembayaran = mysqli_query($conn,"
-    SELECT pb.*, a.bulan_ke, a.jumlah, a.id AS angsuran_id,
+    SELECT pb.*, a.bulan_ke, a.jumlah, a.sisa_tagihan, a.id AS angsuran_id,
            p.no_kontrak,
            np.nama
     FROM pembayaran pb
@@ -24,7 +26,6 @@ function rupiah($angka) {
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-    /* Styling khusus modal SweetAlert agar gambar bukti terlihat proporsional */
     .swal-image-bukti {
         max-height: 70vh;
         object-fit: contain;
@@ -48,7 +49,7 @@ function rupiah($angka) {
                             <th class="ps-4 py-3">No Kontrak</th>
                             <th>Nasabah</th>
                             <th>Bulan</th>
-                            <th>Tagihan</th>
+                            <th>Tagihan Aktif</th>
                             <th>Kode Unik</th>
                             <th>Total Transfer</th>
                             <th class="text-center">Bukti</th>
@@ -65,14 +66,25 @@ function rupiah($angka) {
                         </tr>
                         <?php else: ?>
                         <?php while ($p = mysqli_fetch_assoc($pembayaran)): 
-                            $total = $p['jumlah'] + $p['kode_unik'];
+                            // LOGIKA CERDAS UANG KURANG
+                            $sisa_aktual = is_null($p['sisa_tagihan']) ? $p['jumlah'] : $p['sisa_tagihan'];
+                            $total = $sisa_aktual + $p['kode_unik'];
                             $path_bukti = "../assets/bukti/" . $p['bukti'];
                         ?>
                         <tr>
                             <td class="ps-4 font-monospace fw-bold text-secondary"><?= htmlspecialchars($p['no_kontrak']) ?></td>
                             <td class="fw-medium text-dark"><?= htmlspecialchars($p['nama']) ?></td>
                             <td><span class="badge bg-info bg-opacity-10 text-info border border-info rounded-pill px-3">Ke-<?= $p['bulan_ke'] ?></span></td>
-                            <td class="text-muted"><?= rupiah($p['jumlah']) ?></td>
+                            
+                            <td class="text-muted">
+                                <?php if($sisa_aktual != $p['jumlah']): ?>
+                                    <span class="text-danger fw-bold"><?= rupiah($sisa_aktual) ?></span><br>
+                                    <small style="font-size:10px;">(Sisa Kekurangan)</small>
+                                <?php else: ?>
+                                    <?= rupiah($sisa_aktual) ?>
+                                <?php endif; ?>
+                            </td>
+                            
                             <td class="text-secondary"><?= $p['kode_unik'] ?></td>
                             <td class="fw-bold text-primary"><?= rupiah($total) ?></td>
                             <td class="text-center">
@@ -101,15 +113,12 @@ function rupiah($angka) {
 </div>
 
 <script>
-    // FUNGSI 1: LIHAT BUKTI GAMBAR (POP-UP)
     function lihatBukti(urlGambar) {
         Swal.fire({
             title: 'Bukti Pembayaran',
             imageUrl: urlGambar,
             imageAlt: 'Bukti Transfer',
-            customClass: {
-                image: 'swal-image-bukti'
-            },
+            customClass: { image: 'swal-image-bukti' },
             showCloseButton: true,
             showConfirmButton: false,
             width: '600px',
@@ -117,39 +126,35 @@ function rupiah($angka) {
         });
     }
 
-    // FUNGSI 2: TERIMA PEMBAYARAN
     function terimaBayar(idBayar, idAngsuran) {
         Swal.fire({
             title: 'Validasi Pembayaran?',
             text: "Pastikan nominal yang ditransfer sudah sesuai dengan tagihan.",
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#10b981', // Emerald 500
-            cancelButtonColor: '#94a3b8',  // Slate 400
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#94a3b8',
             confirmButtonText: 'Ya, Validasi!',
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                // DIPERBAIKI: Mengarah ke pembayaran_valid
                 window.location.href = `dashboard?page=pembayaran_valid&aksi=terima&id=${idBayar}&angsuran=${idAngsuran}`;
             }
         });
     }
 
-    // FUNGSI 3: TOLAK PEMBAYARAN
     function tolakBayar(idBayar, idAngsuran) {
         Swal.fire({
             title: 'Tolak Pembayaran?',
             text: "Nasabah harus mengupload ulang bukti pembayaran jika ditolak.",
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#ef4444', // Red 500
+            confirmButtonColor: '#ef4444',
             cancelButtonColor: '#94a3b8',
             confirmButtonText: 'Ya, Tolak!',
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                // DIPERBAIKI: Mengarah ke pembayaran_valid
                 window.location.href = `dashboard?page=pembayaran_valid&aksi=tolak&id=${idBayar}&angsuran=${idAngsuran}`;
             }
         });

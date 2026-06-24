@@ -83,11 +83,16 @@ $gps_mati = empty($lat) || empty($lng) || $lat == '0' || $lat == '0.00000000';
 
 <div class="container-fluid mt-4 mb-5" style="max-width: 1000px;">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
         <h4 class="fw-bold m-0 text-dark"><i class="fa-solid fa-user-tie text-primary me-2"></i>Detail Profil Nasabah</h4>
-        <a href="dashboard?page=user_nasabah" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
-            <i class="fa-solid fa-arrow-left me-2"></i>Kembali
-        </a>
+        <div>
+            <a href="rekening_koran.php?no_kontrak=<?= urlencode($no_kontrak) ?>" target="_blank" class="btn btn-primary rounded-pill px-4 shadow-sm me-2 fw-bold">
+                <i class="fa-solid fa-print me-2"></i> Rekening Koran
+            </a>
+            <a href="dashboard?page=user_nasabah" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm fw-bold">
+                <i class="fa-solid fa-arrow-left me-2"></i>Kembali
+            </a>
+        </div>
     </div>
 
     <div class="card shadow-sm border-0 rounded-4 mb-4 bg-white">
@@ -122,7 +127,7 @@ $gps_mati = empty($lat) || empty($lng) || $lat == '0' || $lat == '0.00000000';
                         <i class="fa-brands fa-whatsapp fs-5 me-2 align-middle"></i> Ingatkan Nasabah
                     </button>
                 <?php else: ?>
-                    <a href="https://www.google.com/maps?q=<?= $lat ?>,<?= $lng ?>" target="_blank" class="btn btn-outline-success rounded-pill px-4 py-2 fw-bold shadow-sm">
+                    <a href="http://googleusercontent.com/maps.google.com/maps?q=<?= $lat ?>,<?= $lng ?>" target="_blank" class="btn btn-outline-success rounded-pill px-4 py-2 fw-bold shadow-sm">
                         <i class="fa-solid fa-location-arrow me-2"></i> Buka di Maps
                     </a>
                 <?php endif; ?>
@@ -190,6 +195,13 @@ $gps_mati = empty($lat) || empty($lng) || $lat == '0' || $lat == '0.00000000';
                 <div class="mb-3 mt-auto">
                     <div class="info-label">Harga OTR</div>
                     <div class="info-value text-success"><?php echo rupiah($harga_otr); ?></div>
+                </div>
+
+                <div class="mt-4 pt-3 border-top">
+                    <a href="dashboard?page=kendaraan_edit&id=<?= $kredit['kendaraan_id'] ?>" 
+                       class="btn btn-light border rounded-pill px-4 w-100 fw-medium shadow-sm">
+                        <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Data Motor
+                    </a>
                 </div>
             </div>
         </div>

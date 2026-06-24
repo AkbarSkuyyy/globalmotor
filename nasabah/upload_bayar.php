@@ -12,7 +12,6 @@ include '../config/database.php';
 date_default_timezone_set('Asia/Jakarta');
 
 $angsuran_id = $_GET['id'] ?? '';
-$jumlah = $_GET['jumlah'] ?? 0;
 
 $no_kontrak = $_SESSION['username'] ?? null;
 if (!$no_kontrak) {
@@ -23,21 +22,45 @@ if (!$no_kontrak) {
 }
 
 /* =========================================================
-   LOGIKA CERDAS DETEKSI KONTRAK LAMA / BARU
+   BLOKIR JIKA LOKASI BELUM DIIZINKAN (GPS LOCK)
    ========================================================= */
+$cek_lokasi = mysqli_query($conn, "SELECT latitude, longitude FROM nasabah_profile WHERE no_kontrak='$no_kontrak'");
+$lokasi = mysqli_fetch_assoc($cek_lokasi);
+
+// Jika latitude kosong/null, lempar kembali ke dashboard dengan pesan error
+if (empty($lokasi['latitude']) || empty($lokasi['longitude'])) {
+    header('Location: dashboard?error=lokasi');
+    exit;
+}
+/* ========================================================= */
+
+/* =========================================================
+   LOGIKA CERDAS: AMBIL SISA TAGIHAN ASLI DARI DATABASE
+   ========================================================= */
+$q_cek = mysqli_query($conn, "SELECT jumlah, sisa_tagihan FROM angsuran WHERE id='$angsuran_id'");
+$d_cek = mysqli_fetch_assoc($q_cek);
+
+if(!$d_cek) {
+    echo "<script>alert('Data tagihan tidak ditemukan!'); window.location='dashboard';</script>";
+    exit;
+}
+
+// Gunakan sisa tagihan jika ada, jika NULL (data lama) gunakan jumlah awal
+$jumlah_tagihan_aktual = is_null($d_cek['sisa_tagihan']) ? $d_cek['jumlah'] : $d_cek['sisa_tagihan'];
+
 // Cek apakah angka tagihan berakhiran '000'
-if ($jumlah % 1000 == 0) {
+if ($jumlah_tagihan_aktual % 1000 == 0) {
     // Jika kelipatan 1000 (berarti Kontrak Baru)
     // Buatkan kode unik acak seperti biasa
     $kode_unik = (abs(crc32($no_kontrak)) % 900) + 100;
 } else {
-    // Jika BUKAN kelipatan 1000 (berarti Kontrak Migrasi Lama)
+    // Jika BUKAN kelipatan 1000 (berarti Kontrak Migrasi Lama atau Sisa Uang Kurang)
     // Set kode unik menjadi 0 agar tidak bertambah ke tagihan aslinya
     $kode_unik = 0; 
 }
 
-// Total tagihan yang harus dibayar Nasabah
-$total_transfer = $jumlah + $kode_unik;
+// Total tagihan yang harus ditransfer Nasabah
+$total_transfer = $jumlah_tagihan_aktual + $kode_unik;
 
 $script_alert = ''; // Variabel penampung notifikasi SweetAlert
 
@@ -90,12 +113,21 @@ if (isset($_POST['upload'])) {
             mysqli_query($conn, "INSERT INTO pembayaran (angsuran_id, bukti, status, created_at, kode_unik) VALUES ('$angsuran_id', '$nama_file', 'PENDING', NOW(), '$kode_unik')");
             mysqli_query($conn, "UPDATE angsuran SET status='PENDING' WHERE id='$angsuran_id'");
 
-            // Notifikasi Telegram untuk Admin
-            $data = mysqli_fetch_assoc(mysqli_query($conn,"SELECT p.no_kontrak, COALESCE(np.nama,'Nasabah') AS nama, a.jumlah, pb.kode_unik FROM pembayaran pb JOIN angsuran a ON pb.angsuran_id=a.id JOIN penjualan p ON a.penjualan_id=p.id LEFT JOIN nasabah_profile np ON np.no_kontrak=p.no_kontrak WHERE pb.angsuran_id='$angsuran_id' ORDER BY pb.id DESC LIMIT 1"));
+            // Notifikasi Telegram untuk Admin (Menampilkan nilai aktual)
+            $data = mysqli_fetch_assoc(mysqli_query($conn,"
+                SELECT p.no_kontrak, COALESCE(np.nama,'Nasabah') AS nama, a.jumlah, a.sisa_tagihan, pb.kode_unik 
+                FROM pembayaran pb 
+                JOIN angsuran a ON pb.angsuran_id=a.id 
+                JOIN penjualan p ON a.penjualan_id=p.id 
+                LEFT JOIN nasabah_profile np ON np.no_kontrak=p.no_kontrak 
+                WHERE pb.angsuran_id='$angsuran_id' ORDER BY pb.id DESC LIMIT 1
+            "));
+            
+            $tagihan_tampil = is_null($data['sisa_tagihan']) ? $data['jumlah'] : $data['sisa_tagihan'];
 
             $token = "8531877183:AAEikf-y_E2ctxcznMtVakQcYKwg2kszp8g";
             $chat_id = "1151150926";
-            $pesan = "💰 PEMBAYARAN MASUK\n👤 Nama: {$data['nama']}\n📄 No Kontrak: {$data['no_kontrak']}\n💵 Tagihan: Rp ".number_format($data['jumlah'],0,',','.')."\n🔢 Kode Unik: {$data['kode_unik']}\n💳 Total Transfer: Rp ".number_format($total_transfer,0,',','.')."\n⏳ Status: Menunggu Validasi";
+            $pesan = "💰 PEMBAYARAN MASUK\n👤 Nama: {$data['nama']}\n📄 No Kontrak: {$data['no_kontrak']}\n💵 Tagihan: Rp ".number_format($tagihan_tampil,0,',','.')."\n🔢 Kode Unik: {$data['kode_unik']}\n💳 Total Transfer: Rp ".number_format($total_transfer,0,',','.')."\n⏳ Status: Menunggu Validasi";
             file_get_contents("https://api.telegram.org/bot$token/sendMessage?".http_build_query(['chat_id' => $chat_id, 'text' => $pesan]));
 
             // ALERT: Jika upload dan notif berhasil semua
@@ -144,7 +176,7 @@ function rupiah($angka) { return 'Rp ' . number_format((float)$angka, 0, ',', '.
                 <?php if($kode_unik > 0): ?>
                     Termasuk kode unik: <strong><?= $kode_unik ?></strong>
                 <?php else: ?>
-                    <i class="bi bi-info-circle me-1"></i> Data Migrasi Kontrak
+                    <i class="bi bi-info-circle me-1"></i> Data Migrasi / Sisa Tagihan
                 <?php endif; ?>
             </div>
         </div>
