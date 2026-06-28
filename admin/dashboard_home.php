@@ -6,32 +6,40 @@ date_default_timezone_set('Asia/Jakarta');
 // ===== SUMMARY DATA =====
 $total_motor = mysqli_fetch_assoc(mysqli_query($conn,
     "SELECT COUNT(*) total FROM kendaraan WHERE status='READY'"
-))['total'];
+))['total'] ?? 0;
 
 $kredit_aktif = mysqli_fetch_assoc(mysqli_query($conn,
     "SELECT COUNT(*) total FROM penjualan"
-))['total'];
+))['total'] ?? 0;
 
 $nasabah_aktif = mysqli_fetch_assoc(mysqli_query($conn,
     "SELECT COUNT(*) total FROM users WHERE role='nasabah' AND status='AKTIF'"
-))['total'];
+))['total'] ?? 0;
 
 $pending = mysqli_fetch_assoc(mysqli_query($conn,
     "SELECT COUNT(*) total FROM pembayaran WHERE status='PENDING'"
-))['total'];
+))['total'] ?? 0;
 
-// ===== TOTAL PEMASUKAN BULAN INI =====
+// ===== TOTAL PEMASUKAN BULAN INI (SINKRON: DP + KASIR + TRANSFER ONLINE) =====
 $bulan_ini = date('Y-m');
-$pemasukan = mysqli_fetch_assoc(mysqli_query($conn,"
-    SELECT SUM(a.jumlah + pb.kode_unik) total
-    FROM pembayaran pb
-    JOIN angsuran a ON pb.angsuran_id=a.id
-    WHERE pb.status='VALID'
-    AND DATE_FORMAT(pb.created_at,'%Y-%m')='$bulan_ini'
+
+// 1. DP Masuk Bulan Ini
+$dp_bulan = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(dp) total FROM penjualan WHERE DATE_FORMAT(created_at, '%Y-%m')='$bulan_ini'"))['total'] ?? 0;
+
+// 2. Kas Masuk Kasir (Bayar Manual Offline) Bulan Ini
+$kas_bulan = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(jumlah) total FROM jurnal_kas WHERE jenis='MASUK' AND DATE_FORMAT(tanggal, '%Y-%m')='$bulan_ini'"))['total'] ?? 0;
+
+// 3. Transfer Online Murni (Mencegah hitung dobel dengan kasir manual)
+$tf_bulan = mysqli_fetch_assoc(mysqli_query($conn, "
+    SELECT SUM(CASE WHEN a.uang_bayar > 0 THEN a.uang_bayar ELSE a.jumlah END) total 
+    FROM pembayaran pb JOIN angsuran a ON pb.angsuran_id=a.id
+    WHERE pb.status='VALID' AND pb.kode_unik != 0 AND DATE_FORMAT(pb.validated_at, '%Y-%m')='$bulan_ini'
 "))['total'] ?? 0;
 
+$pemasukan = $dp_bulan + $kas_bulan + $tf_bulan;
+
 // ==========================================
-// LOGIKA FILTER GRAFIK (HARIAN / BULANAN)
+// LOGIKA FILTER GRAFIK GABUNGAN (KASIR + ONLINE)
 // ==========================================
 $filter_grafik = $_GET['grafik'] ?? 'bulanan';
 $labels = [];
@@ -40,38 +48,37 @@ $data_grafik = [];
 if ($filter_grafik === 'harian') {
     // Tampilkan data per HARI untuk bulan ini
     $judul_grafik = "Grafik Pemasukan Harian (Bulan Ini)";
+    
+    // Query UNION ALL menyatukan uang kasir manual dengan uang transfer online per hari
     $grafik = mysqli_query($conn,"
-        SELECT 
-            DATE(pb.created_at) AS tanggal,
-            SUM(a.jumlah + pb.kode_unik) AS total
-        FROM pembayaran pb
-        JOIN angsuran a ON pb.angsuran_id=a.id
-        WHERE pb.status='VALID' 
-        AND DATE_FORMAT(pb.created_at, '%Y-%m') = '$bulan_ini'
-        GROUP BY DATE(pb.created_at)
-        ORDER BY tanggal ASC
+        SELECT tgl_grup, SUM(nominal) as total FROM (
+            SELECT DATE(tanggal) as tgl_grup, jumlah as nominal FROM jurnal_kas WHERE jenis='MASUK' AND DATE_FORMAT(tanggal, '%Y-%m')='$bulan_ini'
+            UNION ALL
+            SELECT DATE(pb.validated_at) as tgl_grup, (CASE WHEN a.uang_bayar > 0 THEN a.uang_bayar ELSE a.jumlah END) as nominal 
+            FROM pembayaran pb JOIN angsuran a ON pb.angsuran_id=a.id 
+            WHERE pb.status='VALID' AND pb.kode_unik != 0 AND DATE_FORMAT(pb.validated_at, '%Y-%m')='$bulan_ini'
+        ) tbl_gabungan GROUP BY tgl_grup ORDER BY tgl_grup ASC
     ");
     while($g = mysqli_fetch_assoc($grafik)){
-        $labels[] = date('d M Y', strtotime($g['tanggal']));
+        $labels[] = date('d M Y', strtotime($g['tgl_grup']));
         $data_grafik[] = (int)$g['total'];
     }
 } else {
     // Tampilkan data per BULAN untuk tahun ini
     $tahun_ini = date('Y');
     $judul_grafik = "Grafik Pemasukan Bulanan (Tahun $tahun_ini)";
+    
     $grafik = mysqli_query($conn,"
-        SELECT 
-            DATE_FORMAT(pb.created_at,'%Y-%m') AS bulan,
-            SUM(a.jumlah + pb.kode_unik) AS total
-        FROM pembayaran pb
-        JOIN angsuran a ON pb.angsuran_id=a.id
-        WHERE pb.status='VALID'
-        AND YEAR(pb.created_at) = '$tahun_ini'
-        GROUP BY DATE_FORMAT(pb.created_at,'%Y-%m')
-        ORDER BY bulan ASC
+        SELECT bln_grup, SUM(nominal) as total FROM (
+            SELECT DATE_FORMAT(tanggal, '%Y-%m') as bln_grup, jumlah as nominal FROM jurnal_kas WHERE jenis='MASUK' AND YEAR(tanggal)='$tahun_ini'
+            UNION ALL
+            SELECT DATE_FORMAT(pb.validated_at, '%Y-%m') as bln_grup, (CASE WHEN a.uang_bayar > 0 THEN a.uang_bayar ELSE a.jumlah END) as nominal 
+            FROM pembayaran pb JOIN angsuran a ON pb.angsuran_id=a.id 
+            WHERE pb.status='VALID' AND pb.kode_unik != 0 AND YEAR(pb.validated_at)='$tahun_ini'
+        ) tbl_gabungan GROUP BY bln_grup ORDER BY bln_grup ASC
     ");
     while($g = mysqli_fetch_assoc($grafik)){
-        $labels[] = date('M Y', strtotime($g['bulan'].'-01'));
+        $labels[] = date('M Y', strtotime($g['bln_grup'].'-01'));
         $data_grafik[] = (int)$g['total'];
     }
 }
@@ -89,69 +96,19 @@ $log = mysqli_query($conn,"
 
 <style>
     /* Styling List Aktivitas */
-    .activity-item {
-        transition: all 0.2s ease-in-out;
-        border-radius: 12px;
-    }
-    .activity-item:hover {
-        background-color: #f8fafc;
-        transform: translateX(5px);
-    }
-    .activity-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        flex-shrink: 0;
-    }
+    .activity-item { transition: all 0.2s ease-in-out; border-radius: 12px; }
+    .activity-item:hover { background-color: #f8fafc; transform: translateX(5px); }
+    .activity-icon { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
 
     /* Styling Tombol Menu Aksi Cepat */
-    .action-btn-custom {
-        display: flex;
-        align-items: center;
-        padding: 16px;
-        border-radius: 16px;
-        text-decoration: none;
-        transition: all 0.3s ease;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-    }
-    .action-btn-custom:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.06);
-        border-color: #cbd5e1;
-    }
-    .action-icon-box {
-        width: 50px;
-        height: 50px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
-        margin-right: 16px;
-    }
-    .action-btn-custom .fa-chevron-right {
-        transition: transform 0.3s ease;
-    }
-    .action-btn-custom:hover .fa-chevron-right {
-        transform: translateX(4px);
-        color: #3b82f6 !important;
-    }
+    .action-btn-custom { display: flex; align-items: center; padding: 16px; border-radius: 16px; text-decoration: none; transition: all 0.3s ease; background: #ffffff; border: 1px solid #e2e8f0; }
+    .action-btn-custom:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); border-color: #cbd5e1; }
+    .action-icon-box { width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-right: 16px; }
+    .action-btn-custom .fa-chevron-right { transition: transform 0.3s ease; }
+    .action-btn-custom:hover .fa-chevron-right { transform: translateX(4px); color: #3b82f6 !important; }
     
     /* Styling Ikon Summary Box */
-    .summary-icon {
-        width: 45px;
-        height: 45px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-    }
+    .summary-icon { width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
 </style>
 
 <div class="container-fluid pt-2">
@@ -353,7 +310,6 @@ $log = mysqli_query($conn,"
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Cek jika data grafik kosong, jangan render chart agar tidak error
         const dataGrafik = <?= json_encode($data_grafik) ?>;
         if (dataGrafik.length === 0) return;
 
@@ -368,7 +324,7 @@ $log = mysqli_query($conn,"
             data: {
                 labels: <?= json_encode($labels) ?>,
                 datasets: [{
-                    label: 'Pemasukan Kas',
+                    label: 'Pemasukan Kas aktual',
                     data: dataGrafik,
                     borderColor: '#10b981', 
                     backgroundColor: gradientFill,
@@ -416,9 +372,9 @@ $log = mysqli_query($conn,"
                         grid: { color: '#e2e8f0' },
                         ticks: { 
                             font: { family: "'Inter', sans-serif" },
-                            callback: function(value, index, values) {
+                            callback: function(value) {
                                 if (value >= 1000000) return 'Rp ' + (value / 1000000) + ' Jt';
-                                return value;
+                                return 'Rp ' + new Intl.NumberFormat('id-ID').format(value);
                             }
                         }
                     }

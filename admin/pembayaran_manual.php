@@ -3,42 +3,50 @@
 
 $script_sweetalert = ''; // Variabel untuk menampung script alert
 
-// ====== PROSES BAYAR MANUAL (SISTEM UANG KURANG) ======
+// ====== PROSES BAYAR MANUAL (SISTEM UANG KURANG & AKUMULASI) ======
 if (isset($_POST['bayar_manual'])) {
-    $id_angsuran  = (int)$_POST['id_angsuran'];
-    // Hapus format Rupiah (titik/Rp) untuk masuk ke database
-    $nominal_bayar = preg_replace('/[^0-9]/', '', $_POST['nominal_bayar']); 
-    $no_kontrak   = mysqli_real_escape_string($conn, $_POST['no_kontrak']);
-    $tgl_sekarang = date('Y-m-d H:i:s');
+    $id_angsuran   = (int)$_POST['id_angsuran'];
+    // Hapus format Rupiah (titik/Rp) lalu jadikan integer murni
+    $nominal_bayar = (int)preg_replace('/[^0-9]/', '', $_POST['nominal_bayar']); 
+    $no_kontrak    = mysqli_real_escape_string($conn, $_POST['no_kontrak']);
+    $tgl_sekarang  = date('Y-m-d H:i:s');
 
-    // Cek Sisa Tagihan Saat Ini
-    $q_cek = mysqli_query($conn, "SELECT jumlah, sisa_tagihan FROM angsuran WHERE id = '$id_angsuran'");
+    // Cek Sisa Tagihan & Uang yang sudah masuk sebelumnya
+    $q_cek = mysqli_query($conn, "SELECT jumlah, sisa_tagihan, uang_bayar FROM angsuran WHERE id = '$id_angsuran'");
     $d_cek = mysqli_fetch_assoc($q_cek);
     
     // Logika cerdas: Jika sisa_tagihan NULL (data lama), maka sisa hutang = jumlah tagihan awal
-    $sisa_sebelumnya = is_null($d_cek['sisa_tagihan']) ? $d_cek['jumlah'] : $d_cek['sisa_tagihan'];
+    $sisa_sebelumnya = is_null($d_cek['sisa_tagihan']) ? (int)$d_cek['jumlah'] : (int)$d_cek['sisa_tagihan'];
+    $sudah_dibayar   = (int)$d_cek['uang_bayar'];
     
-    // Hitung sisa baru
-    $sisa_baru = $sisa_sebelumnya - $nominal_bayar;
+    // Hitung akumulasi kas aktual
+    $sisa_baru        = $sisa_sebelumnya - $nominal_bayar;
+    $total_bayar_baru = $sudah_dibayar + $nominal_bayar;
     
     if ($sisa_baru <= 0) {
-        $sisa_baru = 0;
+        $sisa_baru   = 0;
         $status_baru = 'LUNAS';
-        $teks_alert = 'Pembayaran Lunas! Status cicilan di akun nasabah otomatis menjadi LUNAS.';
+        $teks_alert  = 'Pembayaran Lunas! Status cicilan di akun nasabah otomatis menjadi LUNAS.';
     } else {
-        $status_baru = 'BELUM';
-        $teks_alert = 'Pembayaran Diterima! Uang kurang, sisa hutang otomatis terakumulasi menjadi Rp ' . number_format($sisa_baru, 0, ',', '.');
+        // PERBAIKAN: Status menjadi SEBAGIAN jika bayar kurang
+        $status_baru = 'SEBAGIAN'; 
+        $teks_alert  = 'Pembayaran Diterima! Uang kurang, sisa hutang otomatis terakumulasi menjadi Rp ' . number_format($sisa_baru, 0, ',', '.');
     }
 
-    // 1. Update status dan sisa tagihan angsuran
-    $update_angsuran = mysqli_query($conn, "UPDATE angsuran SET status = '$status_baru', sisa_tagihan = '$sisa_baru' WHERE id = '$id_angsuran'");
+    // 1. Update angsuran melingkupi uang_bayar dan kurang_bayar agar sinkron dengan struk & laporan
+    $update_angsuran = mysqli_query($conn, "UPDATE angsuran SET 
+        status       = '$status_baru', 
+        sisa_tagihan = '$sisa_baru', 
+        uang_bayar   = '$total_bayar_baru', 
+        kurang_bayar = '$sisa_baru' 
+        WHERE id = '$id_angsuran'");
 
     if ($update_angsuran) {
-        // 2. Catat ke tabel pembayaran (sebagai bukti historis sistem/struk)
+        // 2. Catat ke tabel pembayaran (kode_unik = 0 sebagai penanda bayar kasir offline)
         mysqli_query($conn, "INSERT INTO pembayaran (angsuran_id, bukti, status, validated_at, kode_unik) 
                              VALUES ('$id_angsuran', 'PEMBAYARAN_KASIR', 'VALID', '$tgl_sekarang', 0)");
 
-        // 3. Masukkan ke jurnal kas (hanya sebesar nominal yang dibayar)
+        // 3. Masukkan ke jurnal kas (hanya sebesar uang fisik yang diserahkan hari ini)
         mysqli_query($conn, "INSERT INTO jurnal_kas (tanggal, jenis, sumber, keterangan, jumlah) 
                              VALUES ('$tgl_sekarang', 'MASUK', 'Bayar Manual (Kasir)', '$no_kontrak', '$nominal_bayar')");
 
@@ -227,12 +235,15 @@ $kontrak_pilih = mysqli_real_escape_string($conn, $_GET['kontrak_pilih'] ?? '');
                                 <td>
                                     <?php if($row['status'] == 'LUNAS'): ?>
                                         <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill"><i class="fa-solid fa-check me-1"></i> LUNAS</span>
+                                    <?php elseif($row['status'] == 'SEBAGIAN'): ?>
+                                        <span class="badge bg-warning bg-opacity-10 text-dark px-3 py-2 rounded-pill"><i class="fa-solid fa-clock me-1"></i> SEBAGIAN</span>
                                     <?php else: ?>
                                         <span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill"><i class="fa-solid fa-xmark me-1"></i> BELUM</span>
                                     <?php endif; ?>
                                 </td>
                                 <td class="pe-4 text-end" style="min-width: 250px;">
-                                    <?php if($row['status'] == 'BELUM'): ?>
+                                    
+                                    <?php if($row['status'] != 'LUNAS'): ?>
                                         <form method="POST" action="" onsubmit="konfirmasiBayar(event, this, <?= $row['bulan_ke'] ?>);">
                                             <input type="hidden" name="id_angsuran" value="<?= $row['id'] ?>">
                                             <input type="hidden" name="no_kontrak" value="<?= $kontrak_pilih ?>">
@@ -251,6 +262,7 @@ $kontrak_pilih = mysqli_real_escape_string($conn, $_GET['kontrak_pilih'] ?? '');
                                             <i class="fa-solid fa-check-double me-1"></i> Selesai
                                         </button>
                                     <?php endif; ?>
+
                                 </td>
                             </tr>
                             <?php endwhile; ?>

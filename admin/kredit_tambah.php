@@ -20,8 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_kredit'])){
     $merk       = mysqli_real_escape_string($conn, $_POST['merk']);
     $tipe       = mysqli_real_escape_string($conn, $_POST['tipe']);
     $warna      = mysqli_real_escape_string($conn, $_POST['warna']);
-    $no_rangka  = mysqli_real_escape_string($conn, $_POST['no_rangka']);
-    $no_mesin   = mysqli_real_escape_string($conn, $_POST['no_mesin']);
+    $no_rangka  = !empty($_POST['no_rangka']) ? mysqli_real_escape_string($conn, $_POST['no_rangka']) : '-';
+    $no_mesin   = !empty($_POST['no_mesin']) ? mysqli_real_escape_string($conn, $_POST['no_mesin']) : '-';
     $harga_otr  = preg_replace('/[^0-9]/', '', $_POST['harga_otr']);
 
     /* ================= KREDIT & TANGGAL PENGAMBILAN ================= */
@@ -32,10 +32,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_kredit'])){
     $jatuh_tempo      = mysqli_real_escape_string($conn, $_POST['jatuh_tempo']);
 
     /* ================= GENERATE NO KONTRAK ================= */
-    $tanggal = date('Ymd');
-    $q = mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(*) as total FROM penjualan WHERE DATE(created_at)=CURDATE()"));
-    $urutan = $q['total'] + 1;
-    $no_kontrak = "GM".$tanggal.str_pad($urutan, 3, "0", STR_PAD_LEFT);
+    $kode_dealer  = "GM";
+    $kode_wilayah = "706201"; // Kode wilayah baku
+    $prefix       = $kode_dealer . $kode_wilayah; // Hasil: GM706201
+
+    // Cari nomor kontrak terakhir di database yang berawalan 'GM706201'
+    $q_kontrak = mysqli_query($conn, "SELECT no_kontrak FROM penjualan WHERE no_kontrak LIKE '$prefix%' ORDER BY id DESC LIMIT 1");
+    $row_kontrak = mysqli_fetch_assoc($q_kontrak);
+
+    if ($row_kontrak) {
+        // Ambil 5 digit angka terakhir dari kontrak sebelumnya
+        $urutan_lama = (int)substr($row_kontrak['no_kontrak'], -5);
+        $urutan_baru = $urutan_lama + 1;
+    } else {
+        // Jika belum ada nasabah sama sekali di database, mulai dari 871
+        $urutan_baru = 871;
+    }
+
+    // Gabungkan kembali: GM + 706201 + 00871 (5 digit otomatis dengan angka 0 di depan)
+    $no_kontrak = $prefix . str_pad($urutan_baru, 5, "0", STR_PAD_LEFT);
 
     /* ================= SIMPAN KENDARAAN ================= */
     mysqli_query($conn,"
@@ -177,13 +192,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_kredit'])){
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold small text-secondary">Nomor Rangka</label>
-                        <input type="text" name="no_rangka" class="form-control text-uppercase font-monospace" placeholder="17 Digit No. Rangka" required>
+                        <label class="form-label">Nomor Rangka <small class="text-muted fw-normal">(Opsional)</small></label>
+                        <input type="text" name="no_rangka" class="form-control text-uppercase font-monospace" placeholder="Boleh dikosongkan sementara">
                     </div>
-
+                    
                     <div class="mb-3">
-                        <label class="form-label fw-bold small text-secondary">Nomor Mesin</label>
-                        <input type="text" name="no_mesin" class="form-control text-uppercase font-monospace" placeholder="No. Mesin" required>
+                        <label class="form-label">Nomor Mesin <small class="text-muted fw-normal">(Opsional)</small></label>
+                        <input type="text" name="no_mesin" class="form-control text-uppercase font-monospace" placeholder="Boleh dikosongkan sementara">
                     </div>
 
                     <div class="mb-3 mt-auto">
